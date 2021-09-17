@@ -2,7 +2,6 @@
 #define WATCHY_H
 
 #include <Arduino.h>
-//#include <WiFiManager.h>
 #include <HTTPClient.h>
 #include <Arduino_JSON.h>
 #include <DS3232RTC.h>
@@ -25,7 +24,6 @@ class Watchy {
         static DS3232RTC RTC;
         static GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> display;
         tmElements_t currentTime;
-            //for darkmode. This only affects the watchface atm
 
     public:
         Watchy();
@@ -43,28 +41,22 @@ class Watchy {
         void showAccelerometer();
         void showUpdateFW();
         void setTime();
-        //void setupWifi(); //removed
         bool initWiFi();
         void connectWiFiGUI();
-        //bool connectWiFi(); //is a remnant of the original WiFi implementation. Required for the weather update function
         //void setupBLE();  //not yet created...or maybe a separate file for that
         weatherData getWeatherData(bool online = true); //added "online" argument to allow for forced RTC temp measurement
-        
         void stopWatch(uint8_t btnPin = 0); //under testing
         //void ISRStopwatchEndTime();   //is now outside of the class
         void showTemperature(uint8_t btnPin = 0);
         void setDarkMode(uint8_t btnPin = 0);
         void setPowerSaver(uint8_t btnPin = 0);
         void syncNtpTime();
-
-        //bool getDarkModeStatus();   //for watchface to determine if it's in darkmode
         void showWatchFace(bool partialRefresh);
         virtual void drawWatchFace(); //override this method for different watch faces
 
     private:
         void _rtcConfig(String datetime);    
         void _bmaConfig();
-        //static void _configModeCallback(WiFiManager *myWiFiManager);
         static uint16_t _readRegister(uint8_t address, uint8_t reg, uint8_t *data, uint16_t len);
         static uint16_t _writeRegister(uint8_t address, uint8_t reg, uint8_t *data, uint16_t len);
 };

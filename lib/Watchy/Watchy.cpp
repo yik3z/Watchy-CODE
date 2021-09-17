@@ -11,7 +11,7 @@ RTC_DATA_ATTR bool BLE_CONFIGURED = 0;
 RTC_DATA_ATTR weatherData currentWeather;
 RTC_DATA_ATTR int weatherIntervalCounter = WEATHER_UPDATE_INTERVAL;
 RTC_DATA_ATTR int ntpSyncTimeCounter = 0;
-RTC_DATA_ATTR bool darkMode = 1;   
+RTC_DATA_ATTR bool darkMode = 0;   
 RTC_DATA_ATTR bool lowBatt = 0;  
 RTC_DATA_ATTR bool powerSaver = 0;   
 RTC_DATA_ATTR bool hourlyTimeUpdate = 0;    
@@ -92,20 +92,20 @@ void Watchy::init(String datetime){
             // #endif  //DEBUG
             if((currentTime.Hour >= NIGHT_HOURS_START) && (currentTime.Hour < NIGHT_HOURS_END) && (powerSaver == 0)){  //set to update every hour from NIGHT_HOURS_START onwards //
                 RTC.setAlarm(ALM2_MATCH_MINUTES, 0, 0, 0, 0);   //set RTC alarm to hourly (0th minute of the hour)
-                powerSaver = 1;
+                hourlyTimeUpdate = 1;
                 #ifdef DEBUG
-                Serial.print("Powersaver: ");
-                Serial.println(powerSaver);
+                Serial.print("hourlyTimeUpdate: ");
+                Serial.println(hourlyTimeUpdate);
                 Serial.println("ALM2_MATCH_MINUTES: 0");
                 #endif  //DEBUG
             }
-            else if((powerSaver == 1) && (currentTime.Hour >= NIGHT_HOURS_END)){  //set to update every minute from 7:00am onwards 
+            else if((hourlyTimeUpdate == 1) && (currentTime.Hour >= NIGHT_HOURS_END)){  //set to update every minute from 7:00am onwards 
           //else if(currentTime.Hour == 7 && currentTime.Minute == 0){ 
                 RTC.setAlarm(ALM2_EVERY_MINUTE, 0, 0, 0, 0);  //set alarm back to 
-                powerSaver = 0; 
+                hourlyTimeUpdate = 0; 
                 #ifdef DEBUG
-                Serial.print("Powersaver: ");
-                Serial.println(powerSaver);
+                Serial.print("hourlyTimeUpdate: ");
+                Serial.println(hourlyTimeUpdate);
                 Serial.println("ALM2_EVERY_MINUTE");
                 #endif  //DEBUG
             }
@@ -1212,7 +1212,7 @@ bool Watchy::initWiFi() {
   #endif    //DEBUG
   unsigned long startMillis = millis();
   bool res = true;
-  while (WiFi.status() != WL_CONNECTED) {   //TODO wifi immediately fails to connect
+  while (WiFi.status() != WL_CONNECTED) {   
     if(millis() - startMillis > WIFI_TIMEOUT){  //TODO: add overflow protection
         res = false;    //WiFi failed to connect
         break;
@@ -1225,13 +1225,8 @@ bool Watchy::initWiFi() {
 
 void Watchy::connectWiFiGUI(){
     guiState = APP_STATE;  
-    /*
-    WiFi.mode(WIFI_STA);
-    WiFiManager wm;
-    bool connected = wm.autoConnect(WIFI_SSID, WIFI_PASSWORD);
-    */
     bool connected = initWiFi();
-    display.init(0, false);//_initial_refresh to false to prevent full update on init
+    display.init(0, false); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
     display.fillScreen(GxEPD_BLACK);
     display.setFont(&FreeMonoBold9pt7b);
@@ -1242,7 +1237,7 @@ void Watchy::connectWiFiGUI(){
         display.setCursor(30, 50);
         display.println(WiFi.SSID());
         
-        //update NTP time for good measure (as a debug too)
+        //update NTP time
         struct tm timeinfo; //get NTP Time
         configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
         delay(4000); //delay 4 secods so configTime can finish recieving the time from the internet
@@ -1280,76 +1275,6 @@ void Watchy::connectWiFiGUI(){
     WiFi.mode(WIFI_OFF);
     btStop();
     }   //connectWiFiGUI
-
-/***************** no need all this WiFi Manager stuff *****************/
-//I might delete all this code soon
-
-// void Watchy::setupWifi(){
-//   WiFiManager wifiManager;
-//   wifiManager.resetSettings();
-//   wifiManager.setTimeout(WIFI_AP_TIMEOUT);
-//   wifiManager.setAPCallback(_configModeCallback);
-//   if(!wifiManager.autoConnect(WIFI_AP_SSID)) {//WiFi setup failed
-//     display.init(0, false); //_initial_refresh to false to prevent full update on init
-//     display.setFullWindow();
-//     display.fillScreen(GxEPD_BLACK);
-//     display.setFont(&FreeMonoBold9pt7b);
-//     display.setTextColor(GxEPD_WHITE);
-//     display.setCursor(0, 30);
-//     display.println("Setup failed &");
-//     display.println("timed out!");
-//     display.display(false); //full refresh
-//     display.hibernate();
-//   }else{
-//     display.init(0, false);//_initial_refresh to false to prevent full update on init
-//     display.setFullWindow();
-//     display.fillScreen(GxEPD_BLACK);
-//     display.setFont(&FreeMonoBold9pt7b);
-//     display.setTextColor(GxEPD_WHITE);
-//     display.println("Connected to");
-//     display.println(WiFi.SSID());
-//     display.display(false);//full refresh
-//     display.hibernate();
-//   }
-//   //turn off radios
-//   WiFi.mode(WIFI_OFF);
-//   btStop();
-
-//   guiState = APP_STATE;  
-// }
-
-// void Watchy::_configModeCallback (WiFiManager *myWiFiManager) {
-//   display.init(0, false); //_initial_refresh to false to prevent full update on init
-//   display.setFullWindow();
-//   display.fillScreen(GxEPD_BLACK);
-//   display.setFont(&FreeMonoBold9pt7b);
-//   display.setTextColor(GxEPD_WHITE);
-//   display.setCursor(0, 30);
-//   display.println("Connect to");
-//   display.print("SSID: ");
-//   display.println(WIFI_AP_SSID);
-//   display.print("IP: ");
-//   display.println(WiFi.softAPIP());
-//   display.display(false); //full refresh
-//   display.hibernate();
-// }
-
-// bool Watchy::connectWiFi(){
-//     if(WL_CONNECT_FAILED == WiFi.begin()){//WiFi not setup, you can also use hard coded credentials with WiFi.begin(SSID,PASS);
-//         WIFI_CONFIGURED = false;
-//     }else{
-//         if(WL_CONNECTED == WiFi.waitForConnectResult()){//attempt to connect for 10s
-//             WIFI_CONFIGURED = true;
-//         }else{//connection failed, time out
-//             WIFI_CONFIGURED = false;
-//             //turn off radios
-//             WiFi.mode(WIFI_OFF);
-//             btStop();
-//         }
-//     }
-//     return WIFI_CONFIGURED;
-// }
-
 
 // time_t compileTime()
 // {   
