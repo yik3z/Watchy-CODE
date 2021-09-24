@@ -86,7 +86,7 @@
 #define HARDWARE_VERSION_MINOR 0
 
 //power saving
-#define NIGHT_HOURS_START 2
+#define NIGHT_HOURS_START 1
 #define NIGHT_HOURS_END 7
 
 #endif

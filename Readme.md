@@ -15,7 +15,22 @@
     - seems like it works, am lazy to test but the time gets synced periodically so ain't complaining
 -dark mode toggle (needs a bit more rigorous testing)
 - `DEBUG` mode which prints stuff to serial
-- watch "ticks" only once an hour from 2am to 7am to save batt
+- watch "ticks" only once an hour from 1am to 7am to save batt
+- modified bootloader for faster wake from sleep (See [this guide](https://hackaday.io/project/174898-esp-now-weather-station/log/183782-bootloader-wake-time-improvements)).
+  settings changed:
+  *general*
+   - flash speed=80MHz  
+   - timers used for `gettimeofday` function set to `none`
+   
+   *bootloader config*
+   - compiler optimization to `-O2` for speed
+   - `Skip Image Validation` when waking from Deep Sleep
+   - turned off all logging
+   
+   Flash mode `QIO` doesn't work :(
+   
+   **Not extensively tested, but seems to work for now, use with a pinch of salt.**
+
 
 ## What's Not Working / In Progress
 
