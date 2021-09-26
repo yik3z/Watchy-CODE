@@ -2,6 +2,7 @@
 #define CONFIG_H
 
 //#define DEBUG
+#define INCLUDE_WEATHER
 
 //pins
 #define SDA 21

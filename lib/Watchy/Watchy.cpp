@@ -6,15 +6,17 @@ GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> Watchy::display(GxEPD2_154_D67
 RTC_DATA_ATTR int guiState;
 RTC_DATA_ATTR int menuIndex;
 RTC_DATA_ATTR BMA423 sensor;
-RTC_DATA_ATTR bool WIFI_CONFIGURED;
+RTC_DATA_ATTR bool WIFI_ON;
 RTC_DATA_ATTR bool BLE_CONFIGURED = 0;
 RTC_DATA_ATTR weatherData currentWeather;
 RTC_DATA_ATTR int weatherIntervalCounter = WEATHER_UPDATE_INTERVAL;
 RTC_DATA_ATTR int ntpSyncTimeCounter = 0;
-RTC_DATA_ATTR bool darkMode = 0;   
+RTC_DATA_ATTR bool darkMode = 0; 
+    RTC_DATA_ATTR bool fgColour = GxEPD_BLACK; 
+    RTC_DATA_ATTR bool bgColour = GxEPD_WHITE; 
 RTC_DATA_ATTR bool lowBatt = 0;  
 RTC_DATA_ATTR bool powerSaver = 0;   
-RTC_DATA_ATTR bool hourlyTimeUpdate = 0;    
+RTC_DATA_ATTR bool hourlyTimeUpdate = 0;   
 
 
 //for stopwatch
@@ -133,7 +135,7 @@ void Watchy::syncNtpTime(){
     if(ntpSyncTimeCounter >= NTP_TIME_SYNC_INTERVAL){
         bool connected = initWiFi();
         if(connected) { 
-            WIFI_CONFIGURED = true;
+            WIFI_ON = true;
             struct tm timeinfo;
             //get NTP Time
             configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
@@ -156,7 +158,7 @@ void Watchy::syncNtpTime(){
             #endif //DEBUG
         // shut down the radio to save power
         WiFi.mode(WIFI_OFF);
-        WIFI_CONFIGURED = false;
+        WIFI_ON = false;
         btStop();
         }
     }
@@ -470,7 +472,7 @@ void Watchy::fastMenu(){
 void Watchy::showMenu(byte menuIndex, bool partialRefresh){
     display.init(0, false); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
-    display.fillScreen(GxEPD_BLACK);
+    display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
 
     int16_t  x1, y1;
@@ -492,16 +494,16 @@ void Watchy::showMenu(byte menuIndex, bool partialRefresh){
         display.setCursor(0, yPos);
         if(i == menuIndex){
             display.getTextBounds(menuItems[i], 0, yPos, &x1, &y1, &w, &h);
-            display.fillRect(x1-1, y1-10, 200, h+15, GxEPD_WHITE);
-            display.setTextColor(GxEPD_BLACK);
+            display.fillRect(x1-1, y1-10, 200, h+15, fgColour);
+            display.setTextColor(bgColour);
             display.println(menuItems[i]);      
         }else{
-            display.setTextColor(GxEPD_WHITE);
+            display.setTextColor(fgColour);
             display.println(menuItems[i]);
         }   
     }
 
-    display.display(partialRefresh);
+    display.display(partialRefresh, darkMode);
     //display.hibernate();
 
     guiState = MAIN_MENU_STATE;    
@@ -509,7 +511,7 @@ void Watchy::showMenu(byte menuIndex, bool partialRefresh){
 
 void Watchy::showFastMenu(byte menuIndex){
     display.setFullWindow();
-    display.fillScreen(GxEPD_BLACK);
+    display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
 
     int16_t  x1, y1;
@@ -532,16 +534,16 @@ void Watchy::showFastMenu(byte menuIndex){
     display.setCursor(0, yPos);
     if(i == menuIndex){
         display.getTextBounds(menuItems[i], 0, yPos, &x1, &y1, &w, &h);
-        display.fillRect(x1-1, y1-10, 200, h+15, GxEPD_WHITE);
-        display.setTextColor(GxEPD_BLACK);
+        display.fillRect(x1-1, y1-10, 200, h+15, fgColour);
+        display.setTextColor(bgColour);
         display.println(menuItems[i]);      
     }else{
-        display.setTextColor(GxEPD_WHITE);
+        display.setTextColor(fgColour);
         display.println(menuItems[i]);
     }   
     }
 
-    display.display(true);
+    display.display(true, darkMode);
 
     guiState = MAIN_MENU_STATE;    
 }   //showFastMenu
@@ -549,16 +551,16 @@ void Watchy::showFastMenu(byte menuIndex){
 void Watchy::showBattery(){
     display.init(0, false); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
-    display.fillScreen(GxEPD_BLACK);
+    display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
-    display.setTextColor(GxEPD_WHITE);
+    display.setTextColor(fgColour);
     display.setCursor(20, 30);
     display.println("Battery Voltage:");
-    float voltage = getBatteryVoltage();
+    uint32_t mV = getBatteryVoltage();
     display.setCursor(70, 80);
-    display.print(voltage);
-    display.println("V");
-    display.display(false); //full refresh
+    display.print(mV);
+    display.println("mV");
+    display.display(false, darkMode); //full refresh
     display.hibernate();
 
     guiState = APP_STATE;      
@@ -567,12 +569,12 @@ void Watchy::showBattery(){
 void Watchy::showBuzz(){
     display.init(0, false); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
-    display.fillScreen(GxEPD_BLACK);
+    display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
-    display.setTextColor(GxEPD_WHITE);
+    display.setTextColor(fgColour);
     display.setCursor(70, 80);
     display.println("Buzz!");
-    display.display(false); //full refresh
+    display.display(false, darkMode); //full refresh
     display.hibernate();
     vibMotor();
     showMenu(menuIndex, false);    
@@ -674,62 +676,62 @@ void Watchy::setTime(){
         }   
     }    
 
-    display.fillScreen(GxEPD_BLACK);
-    display.setTextColor(GxEPD_WHITE);
+    display.fillScreen(bgColour);
+    display.setTextColor(fgColour);
     display.setFont(&DSEG7_Classic_Bold_53);
 
     display.setCursor(5, 80);
     if(setIndex == SET_HOUR){//blink hour digits
-        display.setTextColor(blink ? GxEPD_WHITE : GxEPD_BLACK);
+        display.setTextColor(blink ? fgColour : bgColour);
     }
     if(hour < 10){
         display.print("0");      
     }
     display.print(hour);
 
-    display.setTextColor(GxEPD_WHITE);
+    display.setTextColor(fgColour);
     display.print(":");
 
     display.setCursor(108, 80);
     if(setIndex == SET_MINUTE){//blink minute digits
-        display.setTextColor(blink ? GxEPD_WHITE : GxEPD_BLACK);
+        display.setTextColor(blink ? fgColour : bgColour);
     }
     if(minute < 10){
         display.print("0");      
     }
     display.print(minute);
 
-    display.setTextColor(GxEPD_WHITE);
+    display.setTextColor(fgColour);
 
     display.setFont(&FreeMonoBold9pt7b);
     display.setCursor(45, 150);
     if(setIndex == SET_YEAR){//blink minute digits
-        display.setTextColor(blink ? GxEPD_WHITE : GxEPD_BLACK);
+        display.setTextColor(blink ? fgColour : bgColour);
     }    
     display.print(2000+year);
 
-    display.setTextColor(GxEPD_WHITE);
+    display.setTextColor(fgColour);
     display.print("/");
 
     if(setIndex == SET_MONTH){//blink minute digits
-        display.setTextColor(blink ? GxEPD_WHITE : GxEPD_BLACK);
+        display.setTextColor(blink ? fgColour : bgColour);
     }   
     if(month < 10){
         display.print("0");      
     }     
     display.print(month);
 
-    display.setTextColor(GxEPD_WHITE);
+    display.setTextColor(fgColour);
     display.print("/");
 
     if(setIndex == SET_DAY){//blink minute digits
-        display.setTextColor(blink ? GxEPD_WHITE : GxEPD_BLACK);
+        display.setTextColor(blink ? fgColour : bgColour);
     }       
     if(day < 10){
         display.print("0");      
     }     
     display.print(day); 
-    display.display(true); //partial refresh
+    display.display(true, darkMode); //partial refresh
     }
 
     display.hibernate();
@@ -752,9 +754,9 @@ void Watchy::setTime(){
 void Watchy::showAccelerometer(){
     display.init(0, true); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
-    display.fillScreen(GxEPD_BLACK);
+    display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
-    display.setTextColor(GxEPD_WHITE);
+    display.setTextColor(fgColour);
 
     Accel acc;
 
@@ -778,7 +780,7 @@ void Watchy::showAccelerometer(){
         // Get acceleration data
         bool res = sensor.getAccel(acc);
         uint8_t direction = sensor.getDirection();
-        display.fillScreen(GxEPD_BLACK);      
+        display.fillScreen(bgColour);      
         display.setCursor(0, 30);
         if(res == false) {
             display.println("getAccel FAIL");
@@ -812,7 +814,7 @@ void Watchy::showAccelerometer(){
                 break;
         }   //switch(direction)
         }
-        display.display(true); //partial refresh
+        display.display(true, darkMode); //partial refresh
     }   //if(currentMillis - previousMillis > interval)
     }   //while(1)
     showMenu(menuIndex, false);
@@ -822,7 +824,7 @@ void Watchy::showWatchFace(bool partialRefresh){
     display.init(0, false); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
     drawWatchFace();
-    display.display(partialRefresh); //partial refresh
+    display.display(partialRefresh, darkMode); //partial refresh
     display.hibernate();
     guiState = WATCHFACE_STATE;
 }
@@ -883,8 +885,17 @@ weatherData Watchy::getWeatherData(bool online){
     return currentWeather;
 }
 
-float Watchy::getBatteryVoltage(){
-    return analogRead(ADC_PIN) / 4096.0 * 7.23;
+uint32_t Watchy::getBatteryVoltage(){
+    adc_chars = esp_adc_cal_characteristics_t(); 
+    // setup
+    adc1_config_width(ADC_WIDTH_BIT_12);
+    adc1_config_channel_atten(ADC1_GPIO33_CHANNEL, ADC_ATTEN_DB_11);
+    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
+    
+// read voltage
+    int analog = adc1_get_raw(ADC1_GPIO33_CHANNEL);
+    return esp_adc_cal_raw_to_voltage(analog, &adc_chars) * 2;
+    //return analogRead(ADC_PIN) / 4096.0 * 7.23;
 }
 
 //GUI to show temperature
@@ -892,9 +903,9 @@ float Watchy::getBatteryVoltage(){
 void Watchy::showTemperature(uint8_t btnPin){
     display.init(0, false); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
-    display.fillScreen(GxEPD_BLACK);
+    display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
-    display.setTextColor(GxEPD_WHITE);
+    display.setTextColor(fgColour);
     display.setCursor(35, 30);
     display.println("Temperature");
     float temperature = sensor.readTemperature();
@@ -902,7 +913,7 @@ void Watchy::showTemperature(uint8_t btnPin){
     display.setCursor(70, 80);
     display.print(temperature);
     display.println(" C");
-    display.display(btnPin != 0); //partialrefresh = true if it was already in the app
+    display.display(btnPin != 0, darkMode); //partialrefresh = true if it was already in the app
     display.hibernate();
 
     guiState = APP_STATE;      
@@ -914,15 +925,15 @@ void Watchy::stopWatch(uint8_t btnPin){
     if(btnPin == 0){    //entering the app, set up the display
         display.init(0, false); //copied from other functions tbh
         display.setFullWindow();
-        display.fillScreen(GxEPD_BLACK);
+        display.fillScreen(bgColour);
 
         display.setFont(&FreeMonoBold9pt7b);
-        display.setTextColor(GxEPD_WHITE);
+        display.setTextColor(fgColour);
         display.setCursor(45, 30);
         display.println("Stopwatch");
         display.setCursor(STOPWATCH_TIME_X_0, STOPWATCH_TIME_Y_0);
         display.print("0:00.000");  //change to previous finalTimeElapsed later on
-        display.display(false); //full refresh 
+        display.display(false, darkMode); //full refresh 
     }
     /***************** STOPPED HERE *****************/
     guiState = APP_STATE;
@@ -958,10 +969,10 @@ void Watchy::stopWatch(uint8_t btnPin){
                 uint8_t seconds = (timeElapsed % 60000)/1000;   //is it??
                 uint16_t ms = timeElapsed % 1000;
                 // dsiplay time
-                display.fillScreen(GxEPD_BLACK); 
+                display.fillScreen(bgColour); 
                 //maybe can remove the next 2 lines if I fill only the time section with black
                 display.setFont(&FreeMonoBold9pt7b);
-                display.setTextColor(GxEPD_WHITE);
+                display.setTextColor(fgColour);
                 display.setCursor(45, 30);
                 display.println("Stopwatch"); 
 
@@ -976,7 +987,7 @@ void Watchy::stopWatch(uint8_t btnPin){
                 display.println(ms);
                 //display.println(currentMillis);   //debug
 
-                display.display(true); //partial refresh
+                display.display(true, darkMode); //partial refresh
             }
         }
         finalTimeElapsed = endMillis - startMillis; //get final time
@@ -985,9 +996,9 @@ void Watchy::stopWatch(uint8_t btnPin){
         uint8_t seconds = (finalTimeElapsed % 60000)/1000;   
         uint16_t ms = finalTimeElapsed % 1000;
         
-        display.fillScreen(GxEPD_BLACK);
+        display.fillScreen(bgColour);
         display.setFont(&FreeMonoBold9pt7b);
-        display.setTextColor(GxEPD_WHITE);  
+        display.setTextColor(fgColour);  
         display.setCursor(STOPWATCH_TIME_X_0, STOPWATCH_TIME_Y_0);
         display.print(minutes);
         display.print(":");
@@ -998,7 +1009,7 @@ void Watchy::stopWatch(uint8_t btnPin){
         else if(ms<100){display.print("0");}
         display.println(ms);
         //display.println(currentMillis);
-        display.display(true); //partial refresh
+        display.display(true, darkMode); //partial refresh
 
     } //if(btnPin == DOWN_BTN_PIN) i.e. stopwatch ended  
 
@@ -1025,21 +1036,12 @@ void IRAM_ATTR Watchy::ISRStopwatchEndTime() {
 }
 */
 
-// bool Watchy::getDarkModeStatus(){
-//     return darkMode;
-// }
-
 void Watchy::setDarkMode(uint8_t btnPin){
     display.init(0, false); //_initial_refresh to false to prevent full update on init
-    display.setFullWindow();
-    display.fillScreen(GxEPD_BLACK);
-    display.setFont(&FreeMonoBold9pt7b);
-    display.setTextColor(GxEPD_WHITE);
-    display.setCursor(35, 30);
-    display.println("Dark Mode");
-    display.setCursor(70, 80);
     if(btnPin == DOWN_BTN_PIN){    //toggle darkmode if button has been pressed
         darkMode = !darkMode;
+        fgColour = darkMode ? GxEPD_WHITE : GxEPD_BLACK; 
+        bgColour = darkMode ? GxEPD_BLACK : GxEPD_WHITE; 
         #ifdef DEBUG
         Serial.println(darkMode);   //debug
         #endif
@@ -1047,11 +1049,16 @@ void Watchy::setDarkMode(uint8_t btnPin){
     #ifdef DEBUG
     Serial.println(btnPin);   //debug
     #endif
+    display.setFullWindow();
+    display.fillScreen(bgColour);
+    display.setFont(&FreeMonoBold9pt7b);
+    display.setTextColor(fgColour);
+    display.setCursor(35, 30);
+    display.println("Dark Mode");
+    display.setCursor(70, 80);
     display.println(darkMode ? "On" : "Off");
-    if(btnPin == DOWN_BTN_PIN){
-        display.display(true);  //partial update since we're only changing the 'darkmode' text
-    }
-    else{display.display(false);} //full refresh
+
+    display.display(false, darkMode); //full update
     display.hibernate();
     guiState = APP_STATE;      
 }
@@ -1059,9 +1066,9 @@ void Watchy::setDarkMode(uint8_t btnPin){
 void Watchy::setPowerSaver(uint8_t btnPin){
     display.init(0, false); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
-    display.fillScreen(GxEPD_BLACK);
+    display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
-    display.setTextColor(GxEPD_WHITE);
+    display.setTextColor(fgColour);
     display.setCursor(35, 30);
     display.println("Power Saver");
     display.setCursor(70, 80);
@@ -1078,9 +1085,9 @@ void Watchy::setPowerSaver(uint8_t btnPin){
     #endif  //DEBUG
     display.println(powerSaver ? "On" : "Off");
     if(btnPin == DOWN_BTN_PIN){
-        display.display(true);  //partial update since we're only changing the 'darkmode' text
+        display.display(true, darkMode);  //partial update since we're only changing the 'darkmode' text
     }
-    else{display.display(false);} //full refresh
+    else{display.display(false, darkMode);} //full refresh
     display.hibernate();
     guiState = APP_STATE;    
 }
@@ -1228,9 +1235,9 @@ void Watchy::connectWiFiGUI(){
     bool connected = initWiFi();
     display.init(0, false); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
-    display.fillScreen(GxEPD_BLACK);
+    display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
-    display.setTextColor(GxEPD_WHITE);
+    display.setTextColor(fgColour);
     display.setCursor(30, 30);
     if(connected){
         display.println("Connected to");
@@ -1270,7 +1277,7 @@ void Watchy::connectWiFiGUI(){
         display.println("Setup failed &");
         display.println("timed out!");
     }
-    display.display(false);//full refresh
+    display.display(false, darkMode);//full refresh
     display.hibernate();
     WiFi.mode(WIFI_OFF);
     btStop();

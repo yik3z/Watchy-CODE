@@ -13,9 +13,11 @@
 - [scrolling menu](https://gitlab.com/astory024/watchy/-/blob/master/src/Watchy.cpp) by Alex Story
 - NTP timesync (set to sync every 1 week)
     - seems like it works, am lazy to test but the time gets synced periodically so ain't complaining
--dark mode toggle (needs a bit more rigorous testing)
+-dark mode toggle. Changes, watchface, menus, apps (everything)
 - `DEBUG` mode which prints stuff to serial
 - watch "ticks" only once an hour from 1am to 7am to save batt
+- borders around the screen are syncronised to background colour. Based on findings from [peanutman and gewoon_maarten on discord](https://discord.com/channels/804832182006579270/808787590060048465/887013190616117288).
+- more accurate battery voltage. ADC callibration code derived from [peanutman on discord](https://discord.com/channels/804832182006579270/808787590060048465/877194857402232852) (requires sign in to access).
 - modified bootloader for faster wake from sleep (See [this guide](https://hackaday.io/project/174898-esp-now-weather-station/log/183782-bootloader-wake-time-improvements)).
   settings changed:
   *general*
@@ -29,7 +31,7 @@
    
    Flash mode `QIO` doesn't work :(
    
-   **Not extensively tested, but seems to work for now, use with a pinch of salt.**
+   **Not extensively tested, but seems to work for now. I haven't timed it too. Use with a pinch of salt.**
 
 
 ## What's Not Working / In Progress
@@ -38,6 +40,7 @@
 	- tried using interrupts, it broke everything. Will debug soon.
 - power saver toggle (in progress)
 - RTC temperature sensor is messed up (hardware issue, shows 45 - 49dec C). Substituted with BMA423 temperature sensor (yes, the IMU has a temp sensor) but temp is still a bit off (34 ish dec C)
+- remove floating point calculations (eg battery level) because ESP32 has a shitty FPU
 
 
 ## Other Changes

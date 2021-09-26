@@ -15,8 +15,8 @@ void Watchy7SEG::drawWatchFace(){
     Serial.print("Power Saver: ");
     Serial.println(powerSaver);
     #endif  //DEBUG
-    display.fillScreen(darkMode ? GxEPD_BLACK : GxEPD_WHITE);
-    display.setTextColor(darkMode ? GxEPD_WHITE : GxEPD_BLACK);
+    display.fillScreen(bgColour);
+    display.setTextColor(fgColour);
     drawTime();
     drawDate();
     //drawTemperature();
@@ -42,7 +42,7 @@ void Watchy7SEG::drawTime(){
 void Watchy7SEG::drawDate(){
 
     //divider line
-    display.fillRect(DATE_TIME_X_0, TIME_Y_0 + 10, 165, 3, darkMode ? GxEPD_WHITE : GxEPD_BLACK);
+    display.fillRect(DATE_TIME_X_0, TIME_Y_0 + 10, 165, 3, fgColour);
 
     display.setFont(&DIN_Medium10pt7b);
     String dayOfWeek = dayStr(currentTime.Wday);
@@ -69,22 +69,27 @@ void Watchy7SEG::drawDate(){
 
 void Watchy7SEG::drawBatteryBar(){
     //battery bar
-    display.fillRect(0, 2, DISPLAY_WIDTH, BATTERY_BAR_HEIGHT, darkMode ? GxEPD_BLACK : GxEPD_WHITE); //clear battery bar; IS THIS EVEN REQUIRED?
-    float VBAT = getBatteryVoltage();
+    display.fillRect(0, 0, DISPLAY_WIDTH, BATTERY_BAR_HEIGHT, bgColour); //clear battery bar; IS THIS EVEN REQUIRED?
+    uint32_t vBatt = getBatteryVoltage();
     //https://github.com/G6EJD/LiPo_Battery_Capacity_Estimator/blob/master/ReadBatteryCapacity_LIPO.ino as linked by Huey's github
     uint8_t percentage = 100;
-    if (VBAT > 4.19) percentage = 100;
-    else if (VBAT <= 3.50) percentage = 0;
-    else percentage = 2808.3808 * pow(VBAT, 4) - 43560.9157 * pow(VBAT, 3) + 252848.5888 * pow(VBAT, 2) - 650767.4615 * VBAT + 626532.5703;
+    if (vBatt >= 4200) percentage = 100;
+    else if (vBatt <= 3500) percentage = 0;
+    else {
+        float VBAT = vBatt / 1000.0;    //TODO try to get rid of the floating point calculation
+                                        //maybe use a LUT
+        percentage = 2808.3808 * pow(VBAT, 4) - 43560.9157 * pow(VBAT, 3) + 252848.5888 * pow(VBAT, 2) - 650767.4615 * VBAT + 626532.5703;
+    }
+    
     uint8_t batteryBarWidth = percentage * 2; //beacuse it's 200px wide lol
-    display.fillRect(0, 2, batteryBarWidth, BATTERY_BAR_HEIGHT, darkMode ? GxEPD_WHITE : GxEPD_BLACK);
+    display.fillRect(0, 0, batteryBarWidth, BATTERY_BAR_HEIGHT, fgColour);
 }
 void Watchy7SEG::drawBleWiFi(){
     if(BLE_CONFIGURED){ 
-        display.drawBitmap(150, 20, bluetooth, 13, 21, darkMode ? GxEPD_WHITE : GxEPD_BLACK);
+        display.drawBitmap(150, 20, bluetooth, 13, 21, fgColour);
     }
-    if(WIFI_CONFIGURED){ 
-        display.drawBitmap(168, 20, wifi, 26, 18, darkMode ? GxEPD_WHITE : GxEPD_BLACK);
+    if(WIFI_ON){ 
+        display.drawBitmap(168, 20, wifi, 26, 18, fgColour);
     }
 }
 
@@ -97,6 +102,6 @@ void Watchy7SEG::drawTemperature(){
     display.setCursor(TEMPERATURE_X_0, TEMPERATURE_Y_0);
     display.print(temperature);
     display.println(" C");
-    //display.drawBitmap(TEMPERATURE_X_CENTER, TEMPERATURE_Y_0, strcmp(TEMP_UNIT, "metric") == 0 ? celsius : fahrenheit, 26, 20, darkMode ? GxEPD_WHITE : GxEPD_BLACK);
+    //display.drawBitmap(TEMPERATURE_X_CENTER, TEMPERATURE_Y_0, strcmp(TEMP_UNIT, "metric") == 0 ? celsius : fahrenheit, 26, 20, fgColour);
 }
 */
