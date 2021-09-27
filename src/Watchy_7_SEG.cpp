@@ -8,6 +8,21 @@ const uint8_t DATE_Y_0 = 144;
 const uint8_t TEMPERATURE_X_0 = 145;
 const uint8_t TEMPERATURE_Y_0 = 175;
 
+//battery LUT to replace float calculations
+const uint32_t battPercentArray[11] = {
+    3406,
+    3504,
+    3595,
+    3633,
+    3674,
+    3764,
+    3878,
+    3941,
+    4012,
+    4080,
+    4177
+};
+
 Watchy7SEG::Watchy7SEG(){} //constructor
 
 void Watchy7SEG::drawWatchFace(){
