@@ -1,7 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-//#define DEBUG
+#define DEBUG
 #define INCLUDE_WEATHER
 
 //pins
@@ -47,7 +47,7 @@
 #define WATCHFACE_STATE -1
 #define MAIN_MENU_STATE 0
 #define APP_STATE 1
-#define FAST_MENU_SLEEP_TIMEOUT 5000
+#define FAST_MENU_SLEEP_TIMEOUT 2000
 //#define FW_UPDATE_STATE 2
 
 //stopwatch
@@ -89,5 +89,6 @@
 //power saving
 #define NIGHT_HOURS_START 1
 #define NIGHT_HOURS_END 7
+//#define USING_ACCELEROMETER 0   //boolean to decide whether the accelerometer gets initialised
 
 #endif

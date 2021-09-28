@@ -119,13 +119,14 @@ void Watchy::init(String datetime){
             #ifndef ESP_RTC
             _rtcConfig(datetime);
             #endif
-            _bmaConfig();
+            //_bmaConfig();
             showWatchFace(false); //full update on reset
             break;
     }
     #ifdef DEBUG
     Serial.println("Sleep");
     #endif //DEBUG
+
     deepSleep();
 }
 
@@ -160,6 +161,7 @@ void Watchy::syncNtpTime(){
         WiFi.mode(WIFI_OFF);
         WIFI_ON = false;
         btStop();
+        esp_wifi_stop(); 
         }
     }
     else{
@@ -179,6 +181,7 @@ void Watchy::deepSleep(){
     esp_sleep_enable_timer_wakeup(60000000);
     #endif 
     esp_sleep_enable_ext1_wakeup(BTN_PIN_MASK, ESP_EXT1_WAKEUP_ANY_HIGH); //enable deep sleep wake on button press
+    adc_power_off();
     esp_deep_sleep_start();
 }
 
@@ -312,6 +315,7 @@ void Watchy::handleButtonPress(){
       showWatchFace(false);
     }else if(guiState == APP_STATE){
       showMenu(menuIndex, false);//exit to menu if already in app
+      fastMenu();   //test
     }else if(guiState == WATCHFACE_STATE){
       RTC.read(currentTime);
       showWatchFace(true);     //update watch face (for middle fo the night when the watch updates only hourly)
@@ -326,6 +330,7 @@ void Watchy::handleButtonPress(){
         menuIndex = menuOptions - 1;
       }    
       showMenu(menuIndex, true);
+      fastMenu();   //test
     }
     else if (guiState == APP_STATE){
         //nothing yet - wait for down to be proven first
@@ -339,6 +344,7 @@ void Watchy::handleButtonPress(){
         menuIndex = 0;
       }
       showMenu(menuIndex, true);
+      fastMenu();   //test
     }
     
     else if (guiState == APP_STATE){ //is in an app
@@ -554,10 +560,10 @@ void Watchy::showBattery(){
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
     display.setTextColor(fgColour);
-    display.setCursor(20, 30);
+    display.setCursor(15, 90);
     display.println("Battery Voltage:");
     uint32_t mV = getBatteryVoltage();
-    display.setCursor(70, 80);
+    display.setCursor(50, 120);
     display.print(mV);
     display.println("mV");
     display.display(false, darkMode); //full refresh
@@ -761,7 +767,6 @@ void Watchy::showAccelerometer(){
     Accel acc;
 
     long previousMillis = 0;
-    long interval = DISPLAY_REFRESH_INTERVAL;  //set update rate to display refresh rate
 
     guiState = APP_STATE;
 
@@ -775,7 +780,7 @@ void Watchy::showAccelerometer(){
         break;
     }
 
-    if(currentMillis - previousMillis > interval){
+    if(currentMillis - previousMillis > DISPLAY_REFRESH_INTERVAL){
         previousMillis = currentMillis;
         // Get acceleration data
         bool res = sensor.getAccel(acc);
@@ -887,7 +892,9 @@ weatherData Watchy::getWeatherData(bool online){
 
 uint32_t Watchy::getBatteryVoltage(){
     adc_chars = esp_adc_cal_characteristics_t(); 
+    adc_power_on();
     // setup
+
     adc1_config_width(ADC_WIDTH_BIT_12);
     adc1_config_channel_atten(ADC1_GPIO33_CHANNEL, ADC_ATTEN_DB_11);
     esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
@@ -1115,8 +1122,12 @@ uint16_t Watchy::_writeRegister(uint8_t address, uint8_t reg, uint8_t *data, uin
     return (0 !=  Wire.endTransmission());
 }
 
+//TODO: work in progress, crashes watchy
 void Watchy::_bmaConfig(){
- 
+    #ifndef USING_ACCELEROMETER
+    sensor.softReset();
+
+    #else
     if (sensor.begin(_readRegister, _writeRegister, delay) == false) {
         //fail to init BMA
         return;
@@ -1173,7 +1184,8 @@ void Watchy::_bmaConfig(){
     // Enable BMA423 accelerometer
     // Warning : Need to use feature, you must first enable the accelerometer
     // Warning : Need to use feature, you must first enable the accelerometer
-    sensor.enableAccel();
+    //sensor.enableAccel();
+    sensor.disableAccel();
 
     struct bma4_int_pin_config config ;
     config.edge_ctrl = BMA4_LEVEL_TRIGGER;
@@ -1209,6 +1221,10 @@ void Watchy::_bmaConfig(){
     //sensor.enableTiltInterrupt(); //disabled
     // It corresponds to isDoubleClick interrupt
     //sensor.enableWakeupInterrupt();   //disabled
+
+
+    sensor.shutDown();
+    #endif //USING_ACCELEROMETER
 }
 
 bool Watchy::initWiFi() {
@@ -1280,6 +1296,7 @@ void Watchy::connectWiFiGUI(){
     display.display(false, darkMode);//full refresh
     display.hibernate();
     WiFi.mode(WIFI_OFF);
+    esp_wifi_stop();
     btStop();
     }   //connectWiFiGUI
 

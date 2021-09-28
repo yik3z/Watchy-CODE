@@ -5,6 +5,7 @@
 # Features (Working, at least -ish)
 
 - battery bar
+- more accurate battery voltage. ADC callibration code derived from [peanutman on discord](https://discord.com/channels/804832182006579270/808787590060048465/877194857402232852) (requires sign in to access).
 - temperature app but there's a hardware issue
 - watchface
     - DIN Black Font
@@ -17,7 +18,8 @@
 - `DEBUG` mode which prints stuff to serial
 - watch "ticks" only once an hour from 1am to 7am to save batt
 - borders around the screen are syncronised to background colour. Based on findings from [peanutman and gewoon_maarten on discord](https://discord.com/channels/804832182006579270/808787590060048465/887013190616117288).
-- more accurate battery voltage. ADC callibration code derived from [peanutman on discord](https://discord.com/channels/804832182006579270/808787590060048465/877194857402232852) (requires sign in to access).
+
+
 - modified bootloader for faster wake from sleep (See [this guide](https://hackaday.io/project/174898-esp-now-weather-station/log/183782-bootloader-wake-time-improvements)).
   settings changed:
   *general*
@@ -35,12 +37,11 @@
 
 
 ## What's Not Working / In Progress
-
+- trying to configure the BMA423 properly, for low power
 - stopwatch (working on it but lower priority)
 	- tried using interrupts, it broke everything. Will debug soon.
 - power saver toggle (in progress)
 - RTC temperature sensor is messed up (hardware issue, shows 45 - 49dec C). Substituted with BMA423 temperature sensor (yes, the IMU has a temp sensor) but temp is still a bit off (34 ish dec C)
-- remove floating point calculations (eg battery level) because ESP32 has a shitty FPU
 
 
 ## Other Changes
@@ -56,7 +57,8 @@
 - maybe a thinner font for the time on the watchface
 - double tap to wake stuff
 - idk man BLE updates from phone (this is months or years away)
-- maybe improve RTC accuracy by changing PPM (?)
+- maybe improve RTC accuracy by changing PPM (?) (or I might )
+- remove floating point calculations (eg battery level) because ESP32 has a shitty FPU
 
 # Dependencies
 

@@ -10,6 +10,8 @@
 #include <Fonts/FreeMonoBold9pt7b.h>
 #include "DSEG7_Classic_Bold_53.h"
 #include "BLE.h"
+#include <esp_wifi.h>
+#include "driver/adc.h"
 #include "bma.h"
 #include "esp_adc_cal.h"
 #include "config.h" 
