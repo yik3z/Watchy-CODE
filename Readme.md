@@ -7,8 +7,6 @@
 - battery bar
 - more accurate battery voltage. ADC callibration code derived from [peanutman on discord](https://discord.com/channels/804832182006579270/808787590060048465/877194857402232852) (requires sign in to access).
 - temperature app but there's a hardware issue
-
-
 - watchface
     - DIN Black Font
 	- looks clean
@@ -18,10 +16,8 @@
     - seems like it works, am lazy to test but the time gets synced periodically so ain't complaining
 -dark mode toggle. Changes, watchface, menus, apps (everything)
 - `DEBUG` mode which prints stuff to serial
-- watch "ticks" only once an hour from 1am to 7am to save batt
 - borders around the screen are syncronised to background colour. Based on findings from [peanutman and gewoon_maarten on discord](https://discord.com/channels/804832182006579270/808787590060048465/887013190616117288).
-
-
+- watch "ticks" only once an hour from 1am to 7am to save batt. In between those hours the watchface only shows (e.g.) `03:xx` instead of `03:00`.
 - modified bootloader for faster wake from sleep (See [this guide](https://hackaday.io/project/174898-esp-now-weather-station/log/183782-bootloader-wake-time-improvements)).
   settings changed:
   *general*
@@ -47,11 +43,15 @@
 
 
 ## Other Changes
+**Power Saving**
+- CPU set to 80Mhz (in the hope of power saving)
+- disabled initialisation of BMA423 - seems to save a lot of battery!
+- `fast menu` used to force the code to wait for the timeout before entering sleep even when in an app. Changed it to only wait for the timeout when in the menu. Otherwise (i.e. in an app) enter sleep immediately
 
+**Libraries Removed**
 - removed `FWUpdate` cos it's useless
 - removed `WiFiManager` library; now uses only default `WiFi` library
-- disabled step counter and some other config features on the BMA423 (maybe save batt? no clue lol)
-- not sure if feature: disabled `fast menu` in most places; ESP enters sleep mode faster, but menu is harder to scroll when returning from apps
+
 
 ## Wishlist
 - low battery warning
@@ -63,7 +63,6 @@
 - remove floating point calculations (eg battery level) because ESP32 has a shitty FPU
 
 # Dependencies
-
 - GxEPD2 by Jean-Marc Zingg
 - Adafruit GFX Library by Adafruit
 - Adafruit BusIO by Adafruit (I think)
