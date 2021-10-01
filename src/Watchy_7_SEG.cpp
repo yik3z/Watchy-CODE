@@ -48,10 +48,15 @@ void Watchy7SEG::drawTime(){
     }
     display.print(currentTime.Hour);
     display.print(":");
-    if(currentTime.Minute < 10){
-        display.print("0");
-    }  
-    display.println(currentTime.Minute);  
+    if(hourlyTimeUpdate){
+        display.println("xx");  
+    } 
+    else{
+        if(currentTime.Minute < 10){
+            display.print("0");
+        }  
+        display.println(currentTime.Minute);  
+    }
 }
 
 void Watchy7SEG::drawDate(){

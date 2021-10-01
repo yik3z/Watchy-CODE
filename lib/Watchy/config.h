@@ -53,7 +53,7 @@
 //stopwatch
 #define STOPWATCH_TIME_X_0 50
 #define STOPWATCH_TIME_Y_0 100
-#define STOPWATCH_INTERVAL DISPLAY_REFRESH_INTERVAL  //set stopwatch dsiplay update rate to display refresh rate
+#define STOPWATCH_INTERVAL 1000  //stopwatch dsiplay update rate in ms
 
 //apps 
 /*
@@ -87,6 +87,7 @@
 #define HARDWARE_VERSION_MINOR 0
 
 //power saving
+#define NIGHT_HOURLY_TIME_UPDATE
 #define NIGHT_HOURS_START 1
 #define NIGHT_HOURS_END 7
 //#define USING_ACCELEROMETER 0   //boolean to decide whether the accelerometer gets initialised

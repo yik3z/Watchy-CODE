@@ -44,7 +44,7 @@ class Watchy {
         void showMenu(byte menuIndex, bool partialRefresh);
         void fastMenu();
         void showFastMenu(byte menuIndex);
-        void showBattery();
+        void showBattery(uint8_t btnPin = 0);
         void showBuzz();
         void showAccelerometer();
         void showUpdateFW();
@@ -58,12 +58,12 @@ class Watchy {
         #endif //INCLULDE_WEATHER
 
         void stopWatch(uint8_t btnPin = 0); //under testing
-        //void ISRStopwatchEndTime();   //is now outside of the class
         void showTemperature(uint8_t btnPin = 0);
         void setDarkMode(uint8_t btnPin = 0);
         void setPowerSaver(uint8_t btnPin = 0);
         void syncNtpTime();
         void showWatchFace(bool partialRefresh);
+        void checkBtnInterrupt();
         virtual void drawWatchFace(); //override this method for different watch faces
 
     private:
@@ -73,7 +73,7 @@ class Watchy {
         static uint16_t _writeRegister(uint8_t address, uint8_t reg, uint8_t *data, uint16_t len);
 };
 
-void ISRStopwatchEndTime();
+void ISRStopwatchEnd(); //ISR delcared outside the Watchy class :0
 
 extern RTC_DATA_ATTR int guiState;
 extern RTC_DATA_ATTR int menuIndex;

@@ -7,6 +7,8 @@
 - battery bar
 - more accurate battery voltage. ADC callibration code derived from [peanutman on discord](https://discord.com/channels/804832182006579270/808787590060048465/877194857402232852) (requires sign in to access).
 - temperature app but there's a hardware issue
+
+
 - watchface
     - DIN Black Font
 	- looks clean

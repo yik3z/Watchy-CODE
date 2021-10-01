@@ -20,12 +20,12 @@ RTC_DATA_ATTR bool hourlyTimeUpdate = 0;
 
 
 //for stopwatch
-unsigned long finalTimeElapsed = 0;
 unsigned long endMillis = 0;
-bool stopwatchStopped = true;  //flag set by ISR when stop button is pressed
+RTC_DATA_ATTR unsigned long finalTimeElapsed = 0;
+bool stopBtnPressed = false;
 
 
-const char *menuItems[] = {"Check Battery", "Vibrate Motor", "Show Accelerometer", "Set Time","Dark/Light Mode","Power Saver","Show Temperature","Stopwatch","Connect WiFi","BLE"};
+const char *menuItems[] = {"Check Battery", "Vibrate Motor", "Show Accelerometer", "Set Time","Dark/Light Mode","Power Saver","Show Temperature","Stopwatch","Sync Time (WiFi)","BLE"};
 int16_t menuOptions = sizeof(menuItems) / sizeof(menuItems[0]);
 
 String getValue(String data, char separator, int index)
@@ -83,16 +83,14 @@ void Watchy::init(String datetime){
         #endif
         case ESP_SLEEP_WAKEUP_EXT0: //RTC Alarm
             RTC.alarm(ALARM_2); //resets the alarm flag in the RTC
-            
             if(guiState == WATCHFACE_STATE){
                 RTC.read(currentTime);
-                showWatchFace(true); //partial updates on tick
+                if((currentTime.Hour == 3) && (currentTime.Minute == 0)){    //full refresh late at night
+                    showWatchFace(false);
+                } else showWatchFace(true); //partial updates on tick
             }
-            // #ifdef DEBUG
-            // Serial.print("currentTime.Hour: ");
-            // Serial.println(currentTime.Hour);
-            // #endif  //DEBUG
-            if((currentTime.Hour >= NIGHT_HOURS_START) && (currentTime.Hour < NIGHT_HOURS_END) && (powerSaver == 0)){  //set to update every hour from NIGHT_HOURS_START onwards //
+            #ifdef NIGHT_HOURLY_TIME_UPDATE
+            if((hourlyTimeUpdate == 0) && (currentTime.Hour >= NIGHT_HOURS_START) && (currentTime.Hour < NIGHT_HOURS_END)){  //set to update every hour from NIGHT_HOURS_START onwards //
                 RTC.setAlarm(ALM2_MATCH_MINUTES, 0, 0, 0, 0);   //set RTC alarm to hourly (0th minute of the hour)
                 hourlyTimeUpdate = 1;
                 #ifdef DEBUG
@@ -110,10 +108,12 @@ void Watchy::init(String datetime){
                 Serial.println(hourlyTimeUpdate);
                 Serial.println("ALM2_EVERY_MINUTE");
                 #endif  //DEBUG
+            #endif  //NIGHT_HOURLY_TIME_UPDATE
             }
             break;
         case ESP_SLEEP_WAKEUP_EXT1: //button Press
             handleButtonPress();
+            checkBtnInterrupt();
             break;
         default: //reset
             #ifndef ESP_RTC
@@ -221,7 +221,7 @@ void Watchy::handleButtonPress(){
   //Menu Button
   if (wakeupBit & MENU_BTN_MASK){
     if(guiState == WATCHFACE_STATE){//enter menu state if coming from watch face
-        showMenu(menuIndex, false);
+        showMenu(menuIndex, true);
         fastMenu();
     }else if(guiState == MAIN_MENU_STATE){//if already in menu, then select menu item
       switch(menuIndex)
@@ -268,7 +268,7 @@ void Watchy::handleButtonPress(){
       switch(menuIndex)
       {
         case 0:
-          //showBattery();
+          showBattery(MENU_BTN_PIN);
           break;
         case 1:
           //showBuzz();
@@ -314,7 +314,7 @@ void Watchy::handleButtonPress(){
       RTC.read(currentTime);
       showWatchFace(false);
     }else if(guiState == APP_STATE){
-      showMenu(menuIndex, false);//exit to menu if already in app
+      showMenu(menuIndex, true);//exit to menu if already in app
       fastMenu();   //test
     }else if(guiState == WATCHFACE_STATE){
       RTC.read(currentTime);
@@ -333,7 +333,42 @@ void Watchy::handleButtonPress(){
       fastMenu();   //test
     }
     else if (guiState == APP_STATE){
-        //nothing yet - wait for down to be proven first
+        //ADD YOUR BUTTON EVENTS HERE
+        switch(menuIndex)
+        {
+        case 0: //battery App
+          //showBattery();
+          break;
+        case 1:
+          //showBuzz();
+          break;          
+        case 2:
+          //showAccelerometer();
+          break;
+        case 3:
+          //setTime();
+          break;
+        case 4:
+          //setDarkMode(UP_BTN_PIN);
+          break;    
+        case 5:
+          //setPowerSaver(UP_BTN_PIN);  
+          break;              
+        case 6:
+          //showTemperature();
+          break;
+	    case 7:
+		  stopWatch(UP_BTN_PIN);
+		  break;
+        case 8:
+		  //connectWiFiGUI();
+		  break;
+        case 9:
+          //setupBLE();
+          break;
+        default:
+          break;
+        }
     }
   }
   //Down Button
@@ -554,7 +589,15 @@ void Watchy::showFastMenu(byte menuIndex){
     guiState = MAIN_MENU_STATE;    
 }   //showFastMenu
 
-void Watchy::showBattery(){
+void Watchy::checkBtnInterrupt(){
+    //TODO
+}
+
+
+
+/***APPS***/
+
+void Watchy::showBattery(uint8_t btnPin){
     display.init(0, false); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
     display.fillScreen(bgColour);
@@ -563,12 +606,11 @@ void Watchy::showBattery(){
     display.setCursor(15, 90);
     display.println("Battery Voltage:");
     uint32_t mV = getBatteryVoltage();
-    display.setCursor(50, 120);
+    display.setCursor(60, 120);
     display.print(mV);
-    display.println("mV");
-    display.display(false, darkMode); //full refresh
+    display.println(" mV");
+    display.display(btnPin != 0, darkMode); //partial refresh (true) if btn pin != 0
     display.hibernate();
-
     guiState = APP_STATE;      
 }
 
@@ -928,50 +970,55 @@ void Watchy::showTemperature(uint8_t btnPin){
 
 //in progress
 void Watchy::stopWatch(uint8_t btnPin){
-
-    if(btnPin == 0){    //entering the app, set up the display
-        display.init(0, false); //copied from other functions tbh
+    guiState = APP_STATE;
+    if(btnPin == 0){    //entering the app for the first time
+        finalTimeElapsed = 0;
+        display.init(0, false); 
         display.setFullWindow();
         display.fillScreen(bgColour);
-
         display.setFont(&FreeMonoBold9pt7b);
         display.setTextColor(fgColour);
-        display.setCursor(45, 30);
+        display.setCursor(45, 50);
         display.println("Stopwatch");
-        display.setCursor(STOPWATCH_TIME_X_0, STOPWATCH_TIME_Y_0);
-        display.print("0:00.000");  //change to previous finalTimeElapsed later on
         display.display(false, darkMode); //full refresh 
-    }
-    /***************** STOPPED HERE *****************/
-    guiState = APP_STATE;
-
-
-    if(btnPin == DOWN_BTN_PIN){
+    }  
+    else if(btnPin == DOWN_BTN_PIN){
         //start stopwatch
-        stopwatchStopped = false;
-        attachInterrupt(DOWN_BTN_PIN, ISRStopwatchEndTime, RISING); //trying out an ISR for quicker response
-        unsigned long previousMillis = millis();
-        unsigned long currentMillis = millis();
         unsigned long startMillis = millis();
-        
-        while(true){   //stopwatch running
-            /*
-            if ((digitalRead(MENU_BTN_PIN ) == 1) || (digitalRead(DOWN_BTN_PIN) == 1)){
-                break;
-            }
-            */
-            if (stopwatchStopped == true){
-                //"stop" ISR has been triggered
-                detachInterrupt(DOWN_BTN_PIN);
-                break;
-            }
+        unsigned long previousMillis = millis();
+        //unsigned long currentMillis = millis();   //not used anymore
+        attachInterrupt(DOWN_BTN_PIN, ISRStopwatchEnd, RISING); //trying out an ISR for quicker response
+
+        //TODO check if I need init and all that
+        display.init(0, false); 
+        display.setFullWindow();
+        display.fillScreen(bgColour);
+        display.setFont(&FreeMonoBold9pt7b);
+        display.setTextColor(fgColour);
+        display.setCursor(45, 50);
+        display.println("Stopwatch");
+        //until here
+
+        display.setCursor(STOPWATCH_TIME_X_0, STOPWATCH_TIME_Y_0);
+        display.print("0:00.000");
+        #ifdef DEBUG
+        Serial.println("Stopwatch Started");
+        #endif  //DEBUG
+        display.display(true, darkMode);
+
+        while(true){   //stopwatch running  
             
-            currentMillis = millis();
-            if(currentMillis - previousMillis > STOPWATCH_INTERVAL){
-                previousMillis = currentMillis;
+            //"stop" ISR has been triggered   
+            if (stopBtnPressed == true){
+                detachInterrupt(DOWN_BTN_PIN);
+                stopBtnPressed = false;
+                break;
+            }
+            //stopwatch update loop
+            if(millis() - previousMillis > STOPWATCH_INTERVAL){
+                previousMillis = millis();
                 //get time
-                unsigned long timeElapsed = currentMillis - startMillis;
-                
+                unsigned long timeElapsed = previousMillis - startMillis;
                 uint16_t minutes = timeElapsed/60000;
                 uint8_t seconds = (timeElapsed % 60000)/1000;   //is it??
                 uint16_t ms = timeElapsed % 1000;
@@ -980,7 +1027,7 @@ void Watchy::stopWatch(uint8_t btnPin){
                 //maybe can remove the next 2 lines if I fill only the time section with black
                 display.setFont(&FreeMonoBold9pt7b);
                 display.setTextColor(fgColour);
-                display.setCursor(45, 30);
+                display.setCursor(45, 50);
                 display.println("Stopwatch"); 
 
                 display.setCursor(STOPWATCH_TIME_X_0, STOPWATCH_TIME_Y_0);
@@ -992,11 +1039,12 @@ void Watchy::stopWatch(uint8_t btnPin){
                 if(ms<10){display.print("00");}
                 else if(ms<100){display.print("0");}
                 display.println(ms);
-                //display.println(currentMillis);   //debug
-
+                //display.println(previousMillis);   //debug
                 display.display(true, darkMode); //partial refresh
-            }
-        }
+                
+            } //stopwatch update loop
+        }   //while true
+     
         finalTimeElapsed = endMillis - startMillis; //get final time
         //check conversion again ah
         uint16_t minutes = finalTimeElapsed/60000;
@@ -1017,31 +1065,35 @@ void Watchy::stopWatch(uint8_t btnPin){
         display.println(ms);
         //display.println(currentMillis);
         display.display(true, darkMode); //partial refresh
-
-    } //if(btnPin == DOWN_BTN_PIN) i.e. stopwatch ended  
-
-    display.hibernate();
-    if(btnPin == UP_BTN_PIN){
+    } //down button pressed
+     
+    else if(btnPin == UP_BTN_PIN){
         //reset time
         finalTimeElapsed = 0;
+        display.setFullWindow();
+        display.fillScreen(bgColour);
+        display.setFont(&FreeMonoBold9pt7b);
+        display.setTextColor(fgColour);
+        display.setCursor(45, 50);
+        display.println("Stopwatch");
+        display.setCursor(STOPWATCH_TIME_X_0, STOPWATCH_TIME_Y_0);
+        display.println("Reset");
+        display.display(true, darkMode); //full refresh 
     }
-    if(btnPin == MENU_BTN_PIN){
+    /*
+    else if(btnPin == MENU_BTN_PIN){
         //return to menu
         showMenu(menuIndex, false);
-    }
+    }    
+    */
+    display.hibernate();
+
 }   //stopWatch
 
-void IRAM_ATTR ISRStopwatchEndTime() {
+void IRAM_ATTR ISRStopwatchEnd() {
     endMillis = millis();
-    stopwatchStopped = true;
+    stopBtnPressed = true;
 }
-
-/*  //seems like it has to be a global function, cannot be under a class
-void IRAM_ATTR Watchy::ISRStopwatchEndTime() {
-    endMillis = millis();
-    stopwatchStopped = true;
-}
-*/
 
 void Watchy::setDarkMode(uint8_t btnPin){
     display.init(0, false); //_initial_refresh to false to prevent full update on init
