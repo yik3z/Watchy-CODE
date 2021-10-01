@@ -1,7 +1,0 @@
-#ifndef WATCHY_BATT_LUT_H
-#define WATCHY_BATT_LUT_H
-
-
-
-
-#endif //WATCHY_BATT_LUT_H

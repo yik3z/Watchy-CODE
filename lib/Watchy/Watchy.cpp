@@ -603,12 +603,18 @@ void Watchy::showBattery(uint8_t btnPin){
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
     display.setTextColor(fgColour);
-    display.setCursor(15, 90);
+    display.setCursor(15, 70);
     display.println("Battery Voltage:");
     uint32_t mV = getBatteryVoltage();
-    display.setCursor(60, 120);
+    uint8_t percentage = getBatteryPercent(mV);
+    display.setCursor(60, 100);
     display.print(mV);
     display.println(" mV");
+    display.setCursor(10, 130);
+    display.println("Battery Percentage:");
+    display.setCursor(70, 150);
+    display.print(percentage);
+    display.println("%");
     display.display(btnPin != 0, darkMode); //partial refresh (true) if btn pin != 0
     display.hibernate();
     guiState = APP_STATE;      
@@ -932,6 +938,12 @@ weatherData Watchy::getWeatherData(bool online){
     return currentWeather;
 }
 
+/*!
+ * @brief Calculates battery voltage using the ESP32 calibrated ADC
+ *
+ * @returns Battery voltage in mV
+ *  
+ */
 uint32_t Watchy::getBatteryVoltage(){
     adc_chars = esp_adc_cal_characteristics_t(); 
     adc_power_on();
@@ -946,6 +958,37 @@ uint32_t Watchy::getBatteryVoltage(){
     return esp_adc_cal_raw_to_voltage(analog, &adc_chars) * 2;
     //return analogRead(ADC_PIN) / 4096.0 * 7.23;
 }
+
+/*!
+ * @brief Calculates battery percentage using battery voltage
+ *
+ * @param[in] vBatt:  Battery voltage in millivolts
+ *
+ * @returns Battery percentage
+ *  
+ */
+uint8_t Watchy::getBatteryPercent(uint32_t vBatt){
+    uint32_t percentage;
+    if((uint32_t)battPercentLUT[0]>vBatt){        //vBatt lower than lowest value in LUT; 0%
+        percentage = 0;
+    } 
+    else if((uint32_t)battPercentLUT[20]<=vBatt){ //vBatt higher than highest value in LUT; 100%
+        percentage = 100;
+    }else{                              //vBatt within LUT
+        uint8_t percentLowerBound = 0;
+        for(uint8_t i = 0; i<21; i++){
+            if((uint32_t)battPercentLUT[i] > vBatt){
+                percentLowerBound = i-1;
+                break;
+            }
+        }   
+        //Interpolation. y0 + delta y; where delta y = grad * delta x
+        //percentage is multiplied 1000x for higher resolution
+        percentage = percentLowerBound * 5000 + ((5000/(battPercentLUT[percentLowerBound+1]-battPercentLUT[percentLowerBound])) * (vBatt-battPercentLUT[percentLowerBound])); 
+        percentage = percentage / 1000; //to get 0-100%
+    }
+    return (uint8_t)percentage;
+} 
 
 //GUI to show temperature
 //temperature taken from BMA423 Accelerometer lol

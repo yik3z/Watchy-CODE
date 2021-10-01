@@ -8,21 +8,6 @@ const uint8_t DATE_Y_0 = 144;
 const uint8_t TEMPERATURE_X_0 = 145;
 const uint8_t TEMPERATURE_Y_0 = 175;
 
-//battery LUT to replace float calculations
-const uint32_t battPercentArray[11] = {
-    3406,
-    3504,
-    3595,
-    3633,
-    3674,
-    3764,
-    3878,
-    3941,
-    4012,
-    4080,
-    4177
-};
-
 Watchy7SEG::Watchy7SEG(){} //constructor
 
 void Watchy7SEG::drawWatchFace(){
@@ -92,7 +77,8 @@ void Watchy7SEG::drawBatteryBar(){
     display.fillRect(0, 0, DISPLAY_WIDTH, BATTERY_BAR_HEIGHT, bgColour); //clear battery bar; IS THIS EVEN REQUIRED?
     uint32_t vBatt = getBatteryVoltage();
     //https://github.com/G6EJD/LiPo_Battery_Capacity_Estimator/blob/master/ReadBatteryCapacity_LIPO.ino as linked by Huey's github
-    uint8_t percentage = 100;
+    uint8_t percentage = getBatteryPercent(vBatt);
+    /*  //removed in favour of LUT
     if (vBatt >= 4200) percentage = 100;
     else if (vBatt <= 3500) percentage = 0;
     else {
@@ -100,8 +86,9 @@ void Watchy7SEG::drawBatteryBar(){
                                         //maybe use a LUT
         percentage = 2808.3808 * pow(VBAT, 4) - 43560.9157 * pow(VBAT, 3) + 252848.5888 * pow(VBAT, 2) - 650767.4615 * VBAT + 626532.5703;
     }
-    
+    */
     uint8_t batteryBarWidth = percentage * 2; //beacuse it's 200px wide lol
+    
     display.fillRect(0, 0, batteryBarWidth, BATTERY_BAR_HEIGHT, fgColour);
 }
 void Watchy7SEG::drawBleWiFi(){

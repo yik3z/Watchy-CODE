@@ -16,6 +16,7 @@
 #include "esp_adc_cal.h"
 #include "config.h" 
 #include "sensitive_config.h"
+#include "watchy_batt_LUT.h"
 
 #ifdef INCLUDE_WEATHER
 #include "Weather.h"
@@ -38,6 +39,7 @@ class Watchy {
         void init(String datetime = "");
         void deepSleep();
         uint32_t getBatteryVoltage();
+        uint8_t getBatteryPercent(uint32_t vBatt);
         void vibMotor(uint8_t intervalMs = 100, uint8_t length = 20);
 
         void handleButtonPress();
