@@ -5,7 +5,7 @@
 //Look up table for battery voltage to percentage conversion
 const uint16_t battPercentLUT[21]{
     3270,   //0
-    3610,
+    3610,   //5
     3690,
     3710,
     3730,   //20

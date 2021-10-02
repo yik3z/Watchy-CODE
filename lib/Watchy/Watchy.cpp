@@ -14,15 +14,20 @@ RTC_DATA_ATTR int ntpSyncTimeCounter = 0;
 RTC_DATA_ATTR bool darkMode = 0; 
     RTC_DATA_ATTR bool fgColour = GxEPD_BLACK; 
     RTC_DATA_ATTR bool bgColour = GxEPD_WHITE; 
-RTC_DATA_ATTR bool lowBatt = 0;  
+RTC_DATA_ATTR bool lowBatt = 0;  //0 = normal, 1 = low, 2 = critical
 RTC_DATA_ATTR bool powerSaver = 0;   
-RTC_DATA_ATTR bool hourlyTimeUpdate = 0;   
+RTC_DATA_ATTR bool hourlyTimeUpdate = 0; 
+//uint8_t reLoop = 0;
+
 
 
 //for stopwatch
 unsigned long endMillis = 0;
 RTC_DATA_ATTR unsigned long finalTimeElapsed = 0;
 bool stopBtnPressed = false;
+
+volatile uint64_t wakeupBit; //is the last button pressed
+volatile unsigned long lastButtonInterrupt;  //si the last button time pressed
 
 
 const char *menuItems[] = {"Check Battery", "Vibrate Motor", "Show Accelerometer", "Set Time","Dark/Light Mode","Power Saver","Show Temperature","Stopwatch","Sync Time (WiFi)","BLE"};
@@ -59,7 +64,7 @@ void Watchy::init(String datetime){
     #endif //DEBUG
 
     Wire.begin(SDA, SCL); //init i2c
-
+    display.init(0, false); //_initial_refresh to false to prevent full update on init
     switch (wakeup_reason)
     {
         #ifdef ESP_RTC
@@ -112,8 +117,16 @@ void Watchy::init(String datetime){
             }
             break;
         case ESP_SLEEP_WAKEUP_EXT1: //button Press
-            handleButtonPress();
-            checkBtnInterrupt();
+            lastButtonInterrupt = millis();
+            wakeupBit = esp_sleep_get_ext1_wakeup_status();
+            setISRs();
+            while(true){
+                handleButtonPress(wakeupBit);
+                //checkBtnInterrupt();
+                if((wakeupBit == 0) || (millis() - lastButtonInterrupt > 1000)){
+                    break;
+                }
+            }
             break;
         default: //reset
             #ifndef ESP_RTC
@@ -174,6 +187,7 @@ void Watchy::syncNtpTime(){
 }
 
 void Watchy::deepSleep(){
+    display.hibernate();
     #ifndef ESP_RTC
     esp_sleep_enable_ext0_wakeup(RTC_PIN, 0); //enable deep sleep wake on RTC interrupt
     #endif  
@@ -213,16 +227,20 @@ void Watchy::_rtcConfig(String datetime){
 Rn I can't think of a better way to handle the button presses after wakeup
 */
 
-void Watchy::handleButtonPress(){
+void Watchy::handleButtonPress(uint64_t wakeupBit){
     #ifdef DEBUG
     Serial.println("Enter Loop (buttonpress)");
     #endif //DEBUG
-  uint64_t wakeupBit = esp_sleep_get_ext1_wakeup_status();
+  
   //Menu Button
   if (wakeupBit & MENU_BTN_MASK){
+      #ifdef DEBUG
+      Serial.println("MENU PRESSED");
+      #endif
+      wakeupBit = 0;    //clear interrupt flag
     if(guiState == WATCHFACE_STATE){//enter menu state if coming from watch face
         showMenu(menuIndex, true);
-        fastMenu();
+        //fastMenu();
     }else if(guiState == MAIN_MENU_STATE){//if already in menu, then select menu item
       switch(menuIndex)
       {
@@ -307,15 +325,16 @@ void Watchy::handleButtonPress(){
   //Back Button
   else if (wakeupBit & BACK_BTN_MASK){
     #ifdef DEBUG
-    Serial.println("Back Button");
-    #endif //DEBUG
+    Serial.println("BACK PRESSED");
+    #endif
+    wakeupBit = 0;
     if(guiState == MAIN_MENU_STATE){//exit to watch face if already in menu
       RTC.alarm(ALARM_2); //resets the alarm flag in the RTC
       RTC.read(currentTime);
       showWatchFace(false);
     }else if(guiState == APP_STATE){
       showMenu(menuIndex, true);//exit to menu if already in app
-      fastMenu();   //test
+      //fastMenu();   //test
     }else if(guiState == WATCHFACE_STATE){
       RTC.read(currentTime);
       showWatchFace(true);     //update watch face (for middle fo the night when the watch updates only hourly)
@@ -324,13 +343,14 @@ void Watchy::handleButtonPress(){
   
   //Up Button
   else if (wakeupBit & UP_BTN_MASK){
+    wakeupBit = 0;
     if(guiState == MAIN_MENU_STATE){//increment menu index
       menuIndex--;
       if(menuIndex < 0){
         menuIndex = menuOptions - 1;
       }    
       showMenu(menuIndex, true);
-      fastMenu();   //test
+      //fastMenu();   //test
     }
     else if (guiState == APP_STATE){
         //ADD YOUR BUTTON EVENTS HERE
@@ -372,14 +392,15 @@ void Watchy::handleButtonPress(){
     }
   }
   //Down Button
-  else if (wakeupBit & DOWN_BTN_MASK){
+  else if (wakeupBit & DOWN_BTN_MASK){\
+    wakeupBit = 0;
     if(guiState == MAIN_MENU_STATE){//decrement menu index
       menuIndex++;
       if(menuIndex > menuOptions - 1){
         menuIndex = 0;
       }
       showMenu(menuIndex, true);
-      fastMenu();   //test
+      //fastMenu();
     }
     
     else if (guiState == APP_STATE){ //is in an app
@@ -421,7 +442,7 @@ void Watchy::handleButtonPress(){
         }
     }
   }
-  display.hibernate();    
+  //display.hibernate();    
 }   //handleButtonPress
 
 /***************** FAST MENU *****************/
@@ -511,7 +532,7 @@ void Watchy::fastMenu(){
 
 //scrolling menu by Alex Story
 void Watchy::showMenu(byte menuIndex, bool partialRefresh){
-    display.init(0, false); //_initial_refresh to false to prevent full update on init
+    //display.init(0, false); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
@@ -589,16 +610,12 @@ void Watchy::showFastMenu(byte menuIndex){
     guiState = MAIN_MENU_STATE;    
 }   //showFastMenu
 
-void Watchy::checkBtnInterrupt(){
-    //TODO
-}
-
 
 
 /***APPS***/
 
 void Watchy::showBattery(uint8_t btnPin){
-    display.init(0, false); //_initial_refresh to false to prevent full update on init
+    //display.init(0, false); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
@@ -621,7 +638,7 @@ void Watchy::showBattery(uint8_t btnPin){
 }
 
 void Watchy::showBuzz(){
-    display.init(0, false); //_initial_refresh to false to prevent full update on init
+    //display.init(0, false); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
@@ -665,7 +682,7 @@ void Watchy::setTime(){
     pinMode(MENU_BTN_PIN, INPUT);  
     pinMode(BACK_BTN_PIN, INPUT);  
 
-    display.init(0, true); //_initial_refresh to false to prevent full update on init
+    //display.init(0, true); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
 
     while(1){
@@ -806,7 +823,7 @@ void Watchy::setTime(){
 }   //setTime
 
 void Watchy::showAccelerometer(){
-    display.init(0, true); //_initial_refresh to false to prevent full update on init
+    //display.init(0, true); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
@@ -874,11 +891,11 @@ void Watchy::showAccelerometer(){
 }   //showAccelerometer
 
 void Watchy::showWatchFace(bool partialRefresh){
-    display.init(0, false); //_initial_refresh to false to prevent full update on init
+    //display.init(0, false); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
     drawWatchFace();
     display.display(partialRefresh, darkMode); //partial refresh
-    display.hibernate();
+    //display.hibernate();
     guiState = WATCHFACE_STATE;
 }
 
@@ -987,13 +1004,18 @@ uint8_t Watchy::getBatteryPercent(uint32_t vBatt){
         percentage = percentLowerBound * 5000 + ((5000/(battPercentLUT[percentLowerBound+1]-battPercentLUT[percentLowerBound])) * (vBatt-battPercentLUT[percentLowerBound])); 
         percentage = percentage / 1000; //to get 0-100%
     }
+    if(percentage < CRIT_BATT_THRESHOLD){
+        lowBatt = 2;
+    } else if(percentage < LOW_BATT_THRESHOLD){
+        lowBatt = 1;
+    } else lowBatt = 0;
     return (uint8_t)percentage;
 } 
 
 //GUI to show temperature
 //temperature taken from BMA423 Accelerometer lol
 void Watchy::showTemperature(uint8_t btnPin){
-    display.init(0, false); //_initial_refresh to false to prevent full update on init
+    //display.init(0, false); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
@@ -1006,7 +1028,7 @@ void Watchy::showTemperature(uint8_t btnPin){
     display.print(temperature);
     display.println(" C");
     display.display(btnPin != 0, darkMode); //partialrefresh = true if it was already in the app
-    display.hibernate();
+    //display.hibernate();
 
     guiState = APP_STATE;      
 }
@@ -1016,7 +1038,7 @@ void Watchy::stopWatch(uint8_t btnPin){
     guiState = APP_STATE;
     if(btnPin == 0){    //entering the app for the first time
         finalTimeElapsed = 0;
-        display.init(0, false); 
+        //display.init(0, false); 
         display.setFullWindow();
         display.fillScreen(bgColour);
         display.setFont(&FreeMonoBold9pt7b);
@@ -1033,7 +1055,7 @@ void Watchy::stopWatch(uint8_t btnPin){
         attachInterrupt(DOWN_BTN_PIN, ISRStopwatchEnd, RISING); //trying out an ISR for quicker response
 
         //TODO check if I need init and all that
-        display.init(0, false); 
+        //display.init(0, false); 
         display.setFullWindow();
         display.fillScreen(bgColour);
         display.setFont(&FreeMonoBold9pt7b);
@@ -1129,7 +1151,7 @@ void Watchy::stopWatch(uint8_t btnPin){
         showMenu(menuIndex, false);
     }    
     */
-    display.hibernate();
+    //display.hibernate();
 
 }   //stopWatch
 
@@ -1161,12 +1183,12 @@ void Watchy::setDarkMode(uint8_t btnPin){
     display.println(darkMode ? "On" : "Off");
 
     display.display(false, darkMode); //full update
-    display.hibernate();
+    //display.hibernate();
     guiState = APP_STATE;      
 }
 
 void Watchy::setPowerSaver(uint8_t btnPin){
-    display.init(0, false); //_initial_refresh to false to prevent full update on init
+    //display.init(0, false); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
@@ -1190,7 +1212,7 @@ void Watchy::setPowerSaver(uint8_t btnPin){
         display.display(true, darkMode);  //partial update since we're only changing the 'darkmode' text
     }
     else{display.display(false, darkMode);} //full refresh
-    display.hibernate();
+    //display.hibernate();
     guiState = APP_STATE;    
 }
 
@@ -1335,6 +1357,9 @@ bool Watchy::initWiFi() {
         res = false;    //WiFi failed to connect
         break;
     }
+    #ifdef DEBUG
+    Serial.println(WiFi.status());
+    #endif
     delay(100);
   }
   
@@ -1344,7 +1369,7 @@ bool Watchy::initWiFi() {
 void Watchy::connectWiFiGUI(){
     guiState = APP_STATE;  
     bool connected = initWiFi();
-    display.init(0, false); //_initial_refresh to false to prevent full update on init
+    //display.init(0, false); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
@@ -1389,12 +1414,53 @@ void Watchy::connectWiFiGUI(){
         display.println("timed out!");
     }
     display.display(false, darkMode);//full refresh
-    display.hibernate();
+    //display.hibernate();
     WiFi.mode(WIFI_OFF);
     esp_wifi_stop();
     btStop();
-    }   //connectWiFiGUI
+}   //connectWiFiGUI
 
+void Watchy::setISRs(){
+    attachInterrupt(MENU_BTN_PIN, ISRMenuBtnPress, RISING);
+    attachInterrupt(BACK_BTN_PIN, ISRBackBtnPress, RISING);
+    attachInterrupt(UP_BTN_PIN, ISRUpBtnPress, RISING);
+    attachInterrupt(DOWN_BTN_PIN, ISRDownBtnPress, RISING);
+}
+
+void IRAM_ATTR ISRMenuBtnPress() {
+    if(millis()-lastButtonInterrupt>BTN_DEBOUNCE_INTERVAL){
+        lastButtonInterrupt = millis();
+        wakeupBit = MENU_BTN_MASK;
+    }
+    
+}
+
+void IRAM_ATTR ISRBackBtnPress() {
+    if(millis()-lastButtonInterrupt>BTN_DEBOUNCE_INTERVAL){
+        lastButtonInterrupt = millis();
+        wakeupBit = BACK_BTN_MASK;
+    }
+}
+
+void IRAM_ATTR ISRUpBtnPress() {
+    if(millis()-lastButtonInterrupt>BTN_DEBOUNCE_INTERVAL){
+        lastButtonInterrupt = millis();
+        wakeupBit = UP_BTN_MASK;
+    }
+}
+
+void IRAM_ATTR ISRDownBtnPress() {
+    if(millis()-lastButtonInterrupt>BTN_DEBOUNCE_INTERVAL){
+        lastButtonInterrupt = millis();
+        wakeupBit = DOWN_BTN_MASK;
+    }
+}
+
+/*
+void Watchy::checkBtnInterrupt(){
+    //TODO
+}
+*/
 // time_t compileTime()
 // {   
 //     const time_t FUDGE(10);    //fudge factor to allow for upload time, etc. (seconds, YMMV)
