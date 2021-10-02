@@ -27,5 +27,4 @@ const uint16_t battPercentLUT[21]{
     4200    //100
 };
 
-
 #endif //WATCHY_BATT_LUT_H

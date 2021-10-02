@@ -44,8 +44,6 @@ class Watchy {
 
         void handleButtonPress();
         void showMenu(byte menuIndex, bool partialRefresh);
-        void fastMenu();
-        void showFastMenu(byte menuIndex);
         void showBattery(uint8_t btnPin = 0);
         void showBuzz();
         void showAccelerometer();
@@ -59,13 +57,12 @@ class Watchy {
         weatherData getWeatherData(bool online = true); //added "online" argument to allow for forced RTC temp measurement
         #endif //INCLULDE_WEATHER
 
-        void stopWatch(uint8_t btnPin = 0); //under testing
+        void stopWatch(uint8_t btnPin = 0);
         void showTemperature(uint8_t btnPin = 0);
         void setDarkMode(uint8_t btnPin = 0);
         void setPowerSaver(uint8_t btnPin = 0);
         void syncNtpTime();
         void showWatchFace(bool partialRefresh);
-        //void checkBtnInterrupt();
         virtual void drawWatchFace(); //override this method for different watch faces
 
         void setISRs();
@@ -84,21 +81,17 @@ void IRAM_ATTR ISRBackBtnPress();
 void IRAM_ATTR ISRUpBtnPress();
 void IRAM_ATTR ISRDownBtnPress();
 
-//for buttonpress ISR loop thingy
-//uint8_t reLoop;
-
-
 /* Data that needs to be preserved over sleep */
 extern RTC_DATA_ATTR int guiState;
 extern RTC_DATA_ATTR int menuIndex;
 extern RTC_DATA_ATTR BMA423 sensor;
-extern RTC_DATA_ATTR bool WIFI_ON;  //whether WiFi is on
+extern RTC_DATA_ATTR bool WIFI_ON;  
 extern RTC_DATA_ATTR bool BLE_CONFIGURED;
-extern RTC_DATA_ATTR bool darkMode;    //for darkmode. This only affects the watchface atm
+extern RTC_DATA_ATTR bool darkMode;    
     extern RTC_DATA_ATTR bool fgColour; 
     extern RTC_DATA_ATTR bool bgColour;
-extern RTC_DATA_ATTR bool lowBatt;  //not used yet
-extern RTC_DATA_ATTR bool powerSaver; //will be a user toggleable 
-extern RTC_DATA_ATTR bool hourlyTimeUpdate; //to replace powerSaver in time update function
+extern RTC_DATA_ATTR bool lowBatt;  
+extern RTC_DATA_ATTR bool powerSaver; //will be a user toggleable
+extern RTC_DATA_ATTR bool hourlyTimeUpdate;
 
 #endif

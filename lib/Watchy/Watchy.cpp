@@ -6,20 +6,17 @@ GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> Watchy::display(GxEPD2_154_D67
 RTC_DATA_ATTR int guiState;
 RTC_DATA_ATTR int menuIndex;
 RTC_DATA_ATTR BMA423 sensor;
-RTC_DATA_ATTR bool WIFI_ON;
+RTC_DATA_ATTR bool WIFI_ON; //whether WiFi is on
 RTC_DATA_ATTR bool BLE_CONFIGURED = 0;
 RTC_DATA_ATTR weatherData currentWeather;
 RTC_DATA_ATTR int weatherIntervalCounter = WEATHER_UPDATE_INTERVAL;
 RTC_DATA_ATTR int ntpSyncTimeCounter = 0;
-RTC_DATA_ATTR bool darkMode = 0; 
+RTC_DATA_ATTR bool darkMode = 0; //for darkmode. This only affects the watchface atm
     RTC_DATA_ATTR bool fgColour = GxEPD_BLACK; 
     RTC_DATA_ATTR bool bgColour = GxEPD_WHITE; 
 RTC_DATA_ATTR bool lowBatt = 0;  //0 = normal, 1 = low, 2 = critical
-RTC_DATA_ATTR bool powerSaver = 0;   
-RTC_DATA_ATTR bool hourlyTimeUpdate = 0; 
-//uint8_t reLoop = 0;
-
-
+RTC_DATA_ATTR bool powerSaver = 0; 
+RTC_DATA_ATTR bool hourlyTimeUpdate = 0;
 
 //for stopwatch
 unsigned long endMillis = 0;
@@ -53,6 +50,7 @@ String getValue(String data, char separator, int index)
 Watchy::Watchy(){
 } //constructor
 
+//Main "loop" that is run everytime Watchy is woken from sleep
 void Watchy::init(String datetime){
     esp_sleep_wakeup_cause_t wakeup_reason;
     wakeup_reason = esp_sleep_get_wakeup_cause(); //get wake up reason
@@ -190,6 +188,13 @@ void Watchy::syncNtpTime(){
     }
 }
 
+/*!
+ * @brief Shuts down everything and puts the ESP32 to deepsleep:
+ * - turns on ext0, ext1 wakeups
+ * - turns off ADCs (save power)
+ * - sets display to hibernate
+ *
+ */
 void Watchy::deepSleep(){
     display.hibernate();
     #ifndef ESP_RTC
@@ -452,97 +457,12 @@ void Watchy::handleButtonPress(){
         }
     }
   }
-  //display.hibernate();    
 }   //handleButtonPress
 
-/***************** FAST MENU *****************/
 
-void Watchy::fastMenu(){
-  bool timeout = false;
-  long lastTimeout = millis();
-  pinMode(MENU_BTN_PIN, INPUT);
-  pinMode(BACK_BTN_PIN, INPUT);
-  pinMode(UP_BTN_PIN, INPUT);
-  pinMode(DOWN_BTN_PIN, INPUT);
-  while(!timeout){
-      if(millis() - lastTimeout > FAST_MENU_SLEEP_TIMEOUT){
-          timeout = true;
-      }else{
-          if(digitalRead(MENU_BTN_PIN) == 1){
-            lastTimeout = millis();  
-            if(guiState == MAIN_MENU_STATE){//if already in menu, then select menu item
-                switch(menuIndex)
-                {
-                    case 0:
-                    showBattery();
-                    break;
-                    case 1:
-                    showBuzz();
-                    break;          
-                    case 2:
-                    showAccelerometer();
-                    break;
-                    case 3:
-                    setTime();
-                    break;
-                    case 4:
-                    setDarkMode();
-                    break;
-                    case 5:
-                    setPowerSaver();
-                    break;                    
-                    case 6:
-                    showTemperature();
-                    break;
-                    case 7:
-                    stopWatch();
-                    break;
-                    case 8:
-                    connectWiFiGUI();
-                    break;
-                    case 9:
-                    //setupBLE();
-                    break;
-                    default:
-                    break;                              
-                }
-            }
-          }else if(digitalRead(BACK_BTN_PIN) == 1){
-            lastTimeout = millis();
-            if(guiState == MAIN_MENU_STATE){//exit to watch face if already in menu
-            RTC.alarm(ALARM_2); //resets the alarm flag in the RTC
-            RTC.read(currentTime);
-            showWatchFace(false);
-            break; //leave loop
-            }else if(guiState == APP_STATE){
-            showMenu(menuIndex, false);//exit to menu if already in app
-            }            
-          }else if(digitalRead(UP_BTN_PIN) == 1){
-            lastTimeout = millis();
-            if(guiState == MAIN_MENU_STATE){//increment menu index
-            menuIndex--;
-            if(menuIndex < 0){
-                menuIndex = menuOptions - 1;
-            }    
-            showFastMenu(menuIndex);
-            }            
-          }else if(digitalRead(DOWN_BTN_PIN) == 1){
-            lastTimeout = millis();
-            if(guiState == MAIN_MENU_STATE){//decrement menu index
-            menuIndex++;
-            if(menuIndex > menuOptions - 1){
-                menuIndex = 0;
-            }
-            showFastMenu(menuIndex);
-            }         
-          }
-      }
-  } 
-}   //fastMenu()
 
 //scrolling menu by Alex Story
 void Watchy::showMenu(byte menuIndex, bool partialRefresh){
-    //display.init(0, false); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
@@ -576,56 +496,13 @@ void Watchy::showMenu(byte menuIndex, bool partialRefresh){
     }
 
     display.display(partialRefresh, darkMode);
-    //display.hibernate();
 
     guiState = MAIN_MENU_STATE;    
 }   //showMenu
 
-void Watchy::showFastMenu(byte menuIndex){
-    display.setFullWindow();
-    display.fillScreen(bgColour);
-    display.setFont(&FreeMonoBold9pt7b);
-
-    int16_t  x1, y1;
-    uint16_t w, h;
-    int16_t yPos;
-	int16_t startPos=0;
-	if(menuIndex+MENU_LENGTH>menuOptions)
-	{
-		
-			startPos=(menuOptions-1)-(MENU_LENGTH-1);
-		
-	}
-	else
-		{
-			startPos=menuIndex;
-		}
-    //const char *menuItems[] = {"Check Battery", "Vibrate Motor", "Show Accelerometer", "Set Time", "Setup WiFi", "Update Firmware","Test"};
-    for(int i=startPos; i<MENU_LENGTH+startPos; i++){
-    yPos = 30+(MENU_HEIGHT*(i-startPos));
-    display.setCursor(0, yPos);
-    if(i == menuIndex){
-        display.getTextBounds(menuItems[i], 0, yPos, &x1, &y1, &w, &h);
-        display.fillRect(x1-1, y1-10, 200, h+15, fgColour);
-        display.setTextColor(bgColour);
-        display.println(menuItems[i]);      
-    }else{
-        display.setTextColor(fgColour);
-        display.println(menuItems[i]);
-    }   
-    }
-
-    display.display(true, darkMode);
-
-    guiState = MAIN_MENU_STATE;    
-}   //showFastMenu
-
-
-
 /***APPS***/
 
 void Watchy::showBattery(uint8_t btnPin){
-    //display.init(0, false); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
@@ -643,12 +520,10 @@ void Watchy::showBattery(uint8_t btnPin){
     display.print(percentage);
     display.println("%");
     display.display(btnPin != 0, darkMode); //partial refresh (true) if btn pin != 0
-    display.hibernate();
     guiState = APP_STATE;      
 }
 
 void Watchy::showBuzz(){
-    //display.init(0, false); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
@@ -656,11 +531,18 @@ void Watchy::showBuzz(){
     display.setCursor(70, 80);
     display.println("Buzz!");
     display.display(false, darkMode); //full refresh
-    display.hibernate();
     vibMotor();
     showMenu(menuIndex, false);    
 }
 
+/*!
+ * @brief Vibrates motor
+ *
+ * @param[in] intervalMs:  Length of pulse & delay
+ *
+ * @param[in] length:  number of pulses * 2
+ *  
+ */
 void Watchy::vibMotor(uint8_t intervalMs, uint8_t length){
     pinMode(VIB_MOTOR_PIN, OUTPUT);
     bool motorOn = false;
@@ -692,7 +574,6 @@ void Watchy::setTime(){
     pinMode(MENU_BTN_PIN, INPUT);  
     pinMode(BACK_BTN_PIN, INPUT);  
 
-    //display.init(0, true); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
 
     while(1){
@@ -815,8 +696,6 @@ void Watchy::setTime(){
     display.display(true, darkMode); //partial refresh
     }
 
-    display.hibernate();
-
     const time_t FUDGE(10);//fudge factor to allow for upload time, etc. (seconds, YMMV)
     tmElements_t tm;
     tm.Month = month;
@@ -833,7 +712,6 @@ void Watchy::setTime(){
 }   //setTime
 
 void Watchy::showAccelerometer(){
-    //display.init(0, true); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
@@ -901,11 +779,9 @@ void Watchy::showAccelerometer(){
 }   //showAccelerometer
 
 void Watchy::showWatchFace(bool partialRefresh){
-    //display.init(0, false); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
     drawWatchFace();
     display.display(partialRefresh, darkMode); //partial refresh
-    //display.hibernate();
     guiState = WATCHFACE_STATE;
 }
 
@@ -922,7 +798,13 @@ void Watchy::drawWatchFace(){
     }  
     display.println(currentTime.Minute);    
 }
-
+/*!
+ * @brief Gets weather data (duh)
+ *
+ * @param[in] online:   whether to get weather data from the internet or just use the temperature of the (BMA423) chip
+ *
+ * @returns Temperature and weather conditions as type: weatherData
+ */
 weatherData Watchy::getWeatherData(bool online){
     if(online){
         if(weatherIntervalCounter >= WEATHER_UPDATE_INTERVAL){ //only update if WEATHER_UPDATE_INTERVAL has elapsed i.e. 30 minutes
@@ -1025,7 +907,6 @@ uint8_t Watchy::getBatteryPercent(uint32_t vBatt){
 //GUI to show temperature
 //temperature taken from BMA423 Accelerometer lol
 void Watchy::showTemperature(uint8_t btnPin){
-    //display.init(0, false); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
@@ -1038,17 +919,18 @@ void Watchy::showTemperature(uint8_t btnPin){
     display.print(temperature);
     display.println(" C");
     display.display(btnPin != 0, darkMode); //partialrefresh = true if it was already in the app
-    //display.hibernate();
 
     guiState = APP_STATE;      
 }
 
-//in progress
+/*! 
+ * @brief Stopwatch function. Uses an interrupt (ISRStopwatchEnd()) to trigger the end time correctly.
+ * Might be quite power hungry while timing becuase there's no way to sleep while counting millis
+ */
 void Watchy::stopWatch(uint8_t btnPin){
     guiState = APP_STATE;
     if(btnPin == 0){    //entering the app for the first time
         finalTimeElapsed = 0;
-        //display.init(0, false); 
         display.setFullWindow();
         display.fillScreen(bgColour);
         display.setFont(&FreeMonoBold9pt7b);
@@ -1065,7 +947,6 @@ void Watchy::stopWatch(uint8_t btnPin){
         attachInterrupt(DOWN_BTN_PIN, ISRStopwatchEnd, RISING); //trying out an ISR for quicker response
 
         //TODO check if I need init and all that
-        //display.init(0, false); 
         display.setFullWindow();
         display.fillScreen(bgColour);
         display.setFont(&FreeMonoBold9pt7b);
@@ -1095,8 +976,8 @@ void Watchy::stopWatch(uint8_t btnPin){
                 //get time
                 unsigned long timeElapsed = previousMillis - startMillis;
                 uint16_t minutes = timeElapsed/60000;
-                uint8_t seconds = (timeElapsed % 60000)/1000;   //is it??
-                uint16_t ms = timeElapsed % 1000;
+                uint8_t seconds = (timeElapsed % 60000)/1000;
+                //uint16_t ms = timeElapsed % 1000; //disable ms printout while counting
                 // dsiplay time
                 display.fillScreen(bgColour); 
                 //maybe can remove the next 2 lines if I fill only the time section with black
@@ -1104,16 +985,17 @@ void Watchy::stopWatch(uint8_t btnPin){
                 display.setTextColor(fgColour);
                 display.setCursor(45, 50);
                 display.println("Stopwatch"); 
-
                 display.setCursor(STOPWATCH_TIME_X_0, STOPWATCH_TIME_Y_0);
                 display.print(minutes);
                 display.print(":");
                 if(seconds<10){display.print("0");}
                 display.print(seconds);
+                /*  //disable ms printout while counting
                 display.print(".");
                 if(ms<10){display.print("00");}
                 else if(ms<100){display.print("0");}
                 display.println(ms);
+                */
                 //display.println(previousMillis);   //debug
                 display.display(true, darkMode); //partial refresh
                 
@@ -1151,18 +1033,10 @@ void Watchy::stopWatch(uint8_t btnPin){
         display.setTextColor(fgColour);
         display.setCursor(45, 50);
         display.println("Stopwatch");
-        display.setCursor(STOPWATCH_TIME_X_0, STOPWATCH_TIME_Y_0);
-        display.println("Reset");
+        display.setCursor(STOPWATCH_TIME_X_0+20, STOPWATCH_TIME_Y_0+30);
+        display.println("Reset!");
         display.display(true, darkMode); //full refresh 
     }
-    /*
-    else if(btnPin == MENU_BTN_PIN){
-        //return to menu
-        showMenu(menuIndex, false);
-    }    
-    */
-    //display.hibernate();
-
 }   //stopWatch
 
 void IRAM_ATTR ISRStopwatchEnd() {
@@ -1171,7 +1045,6 @@ void IRAM_ATTR ISRStopwatchEnd() {
 }
 
 void Watchy::setDarkMode(uint8_t btnPin){
-    display.init(0, false); //_initial_refresh to false to prevent full update on init
     if(btnPin == DOWN_BTN_PIN){    //toggle darkmode if button has been pressed
         darkMode = !darkMode;
         fgColour = darkMode ? GxEPD_WHITE : GxEPD_BLACK; 
@@ -1193,12 +1066,10 @@ void Watchy::setDarkMode(uint8_t btnPin){
     display.println(darkMode ? "On" : "Off");
 
     display.display(false, darkMode); //full update
-    //display.hibernate();
     guiState = APP_STATE;      
 }
 
 void Watchy::setPowerSaver(uint8_t btnPin){
-    //display.init(0, false); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
@@ -1222,7 +1093,6 @@ void Watchy::setPowerSaver(uint8_t btnPin){
         display.display(true, darkMode);  //partial update since we're only changing the 'darkmode' text
     }
     else{display.display(false, darkMode);} //full refresh
-    //display.hibernate();
     guiState = APP_STATE;    
 }
 
@@ -1379,7 +1249,6 @@ bool Watchy::initWiFi() {
 void Watchy::connectWiFiGUI(){
     guiState = APP_STATE;  
     bool connected = initWiFi();
-    //display.init(0, false); //_initial_refresh to false to prevent full update on init
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
@@ -1424,7 +1293,6 @@ void Watchy::connectWiFiGUI(){
         display.println("timed out!");
     }
     display.display(false, darkMode);//full refresh
-    //display.hibernate();
     WiFi.mode(WIFI_OFF);
     esp_wifi_stop();
     btStop();
@@ -1485,11 +1353,131 @@ void IRAM_ATTR ISRDownBtnPress() {
     }
 }
 
+
+/***************** UNUSED CODE *****************/
 /*
-void Watchy::checkBtnInterrupt(){
-    //TODO
-}
-*/
+void Watchy::fastMenu(){
+  bool timeout = false;
+  long lastTimeout = millis();
+  pinMode(MENU_BTN_PIN, INPUT);
+  pinMode(BACK_BTN_PIN, INPUT);
+  pinMode(UP_BTN_PIN, INPUT);
+  pinMode(DOWN_BTN_PIN, INPUT);
+  while(!timeout){
+      if(millis() - lastTimeout > FAST_MENU_SLEEP_TIMEOUT){
+          timeout = true;
+      }else{
+          if(digitalRead(MENU_BTN_PIN) == 1){
+            lastTimeout = millis();  
+            if(guiState == MAIN_MENU_STATE){//if already in menu, then select menu item
+                switch(menuIndex)
+                {
+                    case 0:
+                    showBattery();
+                    break;
+                    case 1:
+                    showBuzz();
+                    break;          
+                    case 2:
+                    showAccelerometer();
+                    break;
+                    case 3:
+                    setTime();
+                    break;
+                    case 4:
+                    setDarkMode();
+                    break;
+                    case 5:
+                    setPowerSaver();
+                    break;                    
+                    case 6:
+                    showTemperature();
+                    break;
+                    case 7:
+                    stopWatch();
+                    break;
+                    case 8:
+                    connectWiFiGUI();
+                    break;
+                    case 9:
+                    //setupBLE();
+                    break;
+                    default:
+                    break;                              
+                }
+            }
+          }else if(digitalRead(BACK_BTN_PIN) == 1){
+            lastTimeout = millis();
+            if(guiState == MAIN_MENU_STATE){//exit to watch face if already in menu
+            RTC.alarm(ALARM_2); //resets the alarm flag in the RTC
+            RTC.read(currentTime);
+            showWatchFace(false);
+            break; //leave loop
+            }else if(guiState == APP_STATE){
+            showMenu(menuIndex, false);//exit to menu if already in app
+            }            
+          }else if(digitalRead(UP_BTN_PIN) == 1){
+            lastTimeout = millis();
+            if(guiState == MAIN_MENU_STATE){//increment menu index
+            menuIndex--;
+            if(menuIndex < 0){
+                menuIndex = menuOptions - 1;
+            }    
+            showFastMenu(menuIndex);
+            }            
+          }else if(digitalRead(DOWN_BTN_PIN) == 1){
+            lastTimeout = millis();
+            if(guiState == MAIN_MENU_STATE){//decrement menu index
+            menuIndex++;
+            if(menuIndex > menuOptions - 1){
+                menuIndex = 0;
+            }
+            showFastMenu(menuIndex);
+            }         
+          }
+      }
+  } 
+}   //fastMenu()
+
+void Watchy::showFastMenu(byte menuIndex){
+    display.setFullWindow();
+    display.fillScreen(bgColour);
+    display.setFont(&FreeMonoBold9pt7b);
+
+    int16_t  x1, y1;
+    uint16_t w, h;
+    int16_t yPos;
+	int16_t startPos=0;
+	if(menuIndex+MENU_LENGTH>menuOptions)
+	{
+		
+			startPos=(menuOptions-1)-(MENU_LENGTH-1);
+		
+	}
+	else
+		{
+			startPos=menuIndex;
+		}
+    //const char *menuItems[] = {"Check Battery", "Vibrate Motor", "Show Accelerometer", "Set Time", "Setup WiFi", "Update Firmware","Test"};
+    for(int i=startPos; i<MENU_LENGTH+startPos; i++){
+    yPos = 30+(MENU_HEIGHT*(i-startPos));
+    display.setCursor(0, yPos);
+    if(i == menuIndex){
+        display.getTextBounds(menuItems[i], 0, yPos, &x1, &y1, &w, &h);
+        display.fillRect(x1-1, y1-10, 200, h+15, fgColour);
+        display.setTextColor(bgColour);
+        display.println(menuItems[i]);      
+    }else{
+        display.setTextColor(fgColour);
+        display.println(menuItems[i]);
+    }   
+    }
+
+    display.display(true, darkMode);
+
+    guiState = MAIN_MENU_STATE;    
+}   //showFastMenu
+
 // time_t compileTime()
 // {   
 //     const time_t FUDGE(10);    //fudge factor to allow for upload time, etc. (seconds, YMMV)
@@ -1511,3 +1499,4 @@ void Watchy::checkBtnInterrupt(){
 //     time_t t = makeTime(tm);
 //     return t + FUDGE;        //add fudge factor to allow for compile time
 // }
+*/
