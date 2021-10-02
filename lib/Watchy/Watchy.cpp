@@ -1335,6 +1335,9 @@ bool Watchy::initWiFi() {
         res = false;    //WiFi failed to connect
         break;
     }
+    #ifdef DEBUG
+    Serial.println(WiFi.status());
+    #endif
     delay(100);
   }
   
