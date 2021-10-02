@@ -1,7 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define DEBUG
+//#define DEBUG
 #define INCLUDE_WEATHER
 
 //pins
@@ -86,10 +86,15 @@
 #define HARDWARE_VERSION_MAJOR 1
 #define HARDWARE_VERSION_MINOR 0
 
-//power saving
+//power saving & battery
 #define NIGHT_HOURLY_TIME_UPDATE
 #define NIGHT_HOURS_START 1
 #define NIGHT_HOURS_END 7
+#define LOW_BATT_THRESHOLD 15
+#define CRIT_BATT_THRESHOLD 5
 //#define USING_ACCELEROMETER 0   //boolean to decide whether the accelerometer gets initialised
+
+#define BTN_DEBOUNCE_INTERVAL 1 //minimum time between buttonpresses (in ms) for it to be counted
+#define BTN_TIMEOUT 2500        //max time to wait for any uncleared button events before ignoring them and going to sleep
 
 #endif

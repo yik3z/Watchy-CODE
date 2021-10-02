@@ -65,8 +65,10 @@ class Watchy {
         void setPowerSaver(uint8_t btnPin = 0);
         void syncNtpTime();
         void showWatchFace(bool partialRefresh);
-        void checkBtnInterrupt();
+        //void checkBtnInterrupt();
         virtual void drawWatchFace(); //override this method for different watch faces
+
+        void setISRs();
 
     private:
         void _rtcConfig(String datetime);    
@@ -75,8 +77,18 @@ class Watchy {
         static uint16_t _writeRegister(uint8_t address, uint8_t reg, uint8_t *data, uint16_t len);
 };
 
+/* ISRs */
 void ISRStopwatchEnd(); //ISR delcared outside the Watchy class :0
+void IRAM_ATTR ISRMenuBtnPress();
+void IRAM_ATTR ISRBackBtnPress();
+void IRAM_ATTR ISRUpBtnPress();
+void IRAM_ATTR ISRDownBtnPress();
 
+//for buttonpress ISR loop thingy
+//uint8_t reLoop;
+
+
+/* Data that needs to be preserved over sleep */
 extern RTC_DATA_ATTR int guiState;
 extern RTC_DATA_ATTR int menuIndex;
 extern RTC_DATA_ATTR BMA423 sensor;
