@@ -42,7 +42,7 @@ class Watchy {
         uint8_t getBatteryPercent(uint32_t vBatt);
         void vibMotor(uint8_t intervalMs = 100, uint8_t length = 20);
 
-        void handleButtonPress(uint64_t wakeupBit);
+        void handleButtonPress();
         void showMenu(byte menuIndex, bool partialRefresh);
         void fastMenu();
         void showFastMenu(byte menuIndex);

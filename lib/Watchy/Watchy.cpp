@@ -59,7 +59,7 @@ void Watchy::init(String datetime){
 
     #ifdef DEBUG
     Serial.begin(115200);
-    Serial.println("wakeup");
+    Serial.println("wakeup: " + String(millis()));
     //Serial.println(wakeup_reason);
     #endif //DEBUG
 
@@ -118,12 +118,17 @@ void Watchy::init(String datetime){
             break;
         case ESP_SLEEP_WAKEUP_EXT1: //button Press
             lastButtonInterrupt = millis();
+            /*
+            #ifdef DEBUG
+            Serial.println("Wake-Button: " + String(lastButtonInterrupt));
+            #endif
+            */
             wakeupBit = esp_sleep_get_ext1_wakeup_status();
             setISRs();
             while(true){
-                handleButtonPress(wakeupBit);
+                handleButtonPress();
                 //checkBtnInterrupt();
-                if((wakeupBit == 0) || (millis() - lastButtonInterrupt > 1000)){
+                if((wakeupBit == 0) || (millis() - lastButtonInterrupt > BTN_TIMEOUT)){
                     break;
                 }
             }
@@ -137,9 +142,8 @@ void Watchy::init(String datetime){
             break;
     }
     #ifdef DEBUG
-    Serial.println("Sleep");
+    Serial.println("Sleep: " + String(millis()));
     #endif //DEBUG
-
     deepSleep();
 }
 
@@ -227,9 +231,9 @@ void Watchy::_rtcConfig(String datetime){
 Rn I can't think of a better way to handle the button presses after wakeup
 */
 
-void Watchy::handleButtonPress(uint64_t wakeupBit){
+void Watchy::handleButtonPress(){
     #ifdef DEBUG
-    Serial.println("Enter Loop (buttonpress)");
+    //Serial.println("Enter Loop (buttonpress)");
     #endif //DEBUG
   
   //Menu Button
@@ -237,7 +241,7 @@ void Watchy::handleButtonPress(uint64_t wakeupBit){
       #ifdef DEBUG
       Serial.println("MENU PRESSED");
       #endif
-      wakeupBit = 0;    //clear interrupt flag
+      wakeupBit = 0;    //clear buttonpress flag
     if(guiState == WATCHFACE_STATE){//enter menu state if coming from watch face
         showMenu(menuIndex, true);
         //fastMenu();
@@ -343,6 +347,9 @@ void Watchy::handleButtonPress(uint64_t wakeupBit){
   
   //Up Button
   else if (wakeupBit & UP_BTN_MASK){
+    #ifdef DEBUG
+    Serial.println("UP PRESSED");
+    #endif
     wakeupBit = 0;
     if(guiState == MAIN_MENU_STATE){//increment menu index
       menuIndex--;
@@ -392,7 +399,10 @@ void Watchy::handleButtonPress(uint64_t wakeupBit){
     }
   }
   //Down Button
-  else if (wakeupBit & DOWN_BTN_MASK){\
+  else if (wakeupBit & DOWN_BTN_MASK){
+    #ifdef DEBUG
+    Serial.println("DOWN PRESSED");
+    #endif
     wakeupBit = 0;
     if(guiState == MAIN_MENU_STATE){//decrement menu index
       menuIndex++;
@@ -1431,6 +1441,10 @@ void IRAM_ATTR ISRMenuBtnPress() {
     if(millis()-lastButtonInterrupt>BTN_DEBOUNCE_INTERVAL){
         lastButtonInterrupt = millis();
         wakeupBit = MENU_BTN_MASK;
+        #ifdef DEBUG
+        //SERIAL.PRINT IN ISR. TRY NOT TO USE THIS UNLESS YOU REALLY NEED IT!!
+        Serial.println("M_ISR: " + String(lastButtonInterrupt));
+        #endif
     }
     
 }
@@ -1439,6 +1453,11 @@ void IRAM_ATTR ISRBackBtnPress() {
     if(millis()-lastButtonInterrupt>BTN_DEBOUNCE_INTERVAL){
         lastButtonInterrupt = millis();
         wakeupBit = BACK_BTN_MASK;
+        #ifdef DEBUG
+        //SERIAL.PRINT IN ISR. TRY NOT TO USE THIS UNLESS YOU REALLY NEED IT!!
+        Serial.println("B_ISR: " + String(lastButtonInterrupt));
+        #endif
+
     }
 }
 
@@ -1446,6 +1465,11 @@ void IRAM_ATTR ISRUpBtnPress() {
     if(millis()-lastButtonInterrupt>BTN_DEBOUNCE_INTERVAL){
         lastButtonInterrupt = millis();
         wakeupBit = UP_BTN_MASK;
+        #ifdef DEBUG
+        //SERIAL.PRINT IN ISR. TRY NOT TO USE THIS UNLESS YOU REALLY NEED IT!!
+        Serial.println("U_ISR: " + String(lastButtonInterrupt));
+        #endif
+
     }
 }
 
@@ -1453,6 +1477,11 @@ void IRAM_ATTR ISRDownBtnPress() {
     if(millis()-lastButtonInterrupt>BTN_DEBOUNCE_INTERVAL){
         lastButtonInterrupt = millis();
         wakeupBit = DOWN_BTN_MASK;
+        #ifdef DEBUG
+        //SERIAL.PRINT IN ISR. TRY NOT TO USE THIS UNLESS YOU REALLY NEED IT!!
+        Serial.println("D_ISR: " + String(lastButtonInterrupt));
+        #endif
+
     }
 }
 
