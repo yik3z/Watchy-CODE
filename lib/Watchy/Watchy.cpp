@@ -17,17 +17,17 @@ RTC_DATA_ATTR bool darkMode = 0; //for darkmode. This only affects the watchface
 RTC_DATA_ATTR bool lowBatt = 0;  //0 = normal, 1 = low, 2 = critical
 RTC_DATA_ATTR bool powerSaver = 0; 
 RTC_DATA_ATTR bool hourlyTimeUpdate = 0;
+volatile uint64_t wakeupBit;
 
 //for stopwatch
 unsigned long endMillis = 0;
 RTC_DATA_ATTR unsigned long finalTimeElapsed = 0;
 bool stopBtnPressed = false;
 
-volatile uint64_t wakeupBit; //is the last button pressed
 volatile unsigned long lastButtonInterrupt;  //si the last button time pressed
 
 
-const char *menuItems[] = {"Check Battery", "Vibrate Motor", "Show Accelerometer", "Set Time","Dark/Light Mode","Power Saver","Show Temperature","Stopwatch","Sync Time (WiFi)","BLE"};
+const char *menuItems[] = {"Check Battery", "Vibrate Motor", "Show Accelerometer", "Set Time","Dark/Light Mode","Power Saver","Show Temperature","Stopwatch","Sync Time (WiFi)","WiFi OTA"};
 int16_t menuOptions = sizeof(menuItems) / sizeof(menuItems[0]);
 
 String getValue(String data, char separator, int index)
@@ -52,9 +52,7 @@ Watchy::Watchy(){
 
 //Main "loop" that is run everytime Watchy is woken from sleep
 void Watchy::init(String datetime){
-    esp_sleep_wakeup_cause_t wakeup_reason;
     wakeup_reason = esp_sleep_get_wakeup_cause(); //get wake up reason
-
     #ifdef DEBUG
     Serial.begin(115200);
     Serial.println("wakeup: " + String(millis()));
@@ -116,11 +114,6 @@ void Watchy::init(String datetime){
             break;
         case ESP_SLEEP_WAKEUP_EXT1: //button Press
             lastButtonInterrupt = millis();
-            /*
-            #ifdef DEBUG
-            Serial.println("Wake-Button: " + String(lastButtonInterrupt));
-            #endif
-            */
             wakeupBit = esp_sleep_get_ext1_wakeup_status();
             setISRs();
             while(true){
@@ -281,7 +274,7 @@ void Watchy::handleButtonPress(){
 		  connectWiFiGUI();
 		  break;
         case 9:
-          //setupBLE();
+          wifiOTA();
           break;
         default:
           break;                              
@@ -322,7 +315,7 @@ void Watchy::handleButtonPress(){
 		  //connectWiFiGUI();
 		  break;
         case 9:
-          //setupBLE();
+          //wifiOTA();
           break;
         default:
           break;                              
@@ -396,7 +389,7 @@ void Watchy::handleButtonPress(){
 		  //connectWiFiGUI();
 		  break;
         case 9:
-          //setupBLE();
+          //wifiOTA();
           break;
         default:
           break;
@@ -450,7 +443,7 @@ void Watchy::handleButtonPress(){
 		  //connectWiFiGUI();
 		  break;
         case 9:
-          //setupBLE();
+          //wifiOTA();
           break;
         default:
           break;
@@ -944,7 +937,7 @@ void Watchy::stopWatch(uint8_t btnPin){
         unsigned long startMillis = millis();
         unsigned long previousMillis = millis();
         //unsigned long currentMillis = millis();   //not used anymore
-        attachInterrupt(DOWN_BTN_PIN, ISRStopwatchEnd, RISING); //trying out an ISR for quicker response
+        attachInterrupt(DOWN_BTN_PIN, ISRStopwatchEnd, RISING); //use interrupt to stop stopwatch
 
         //TODO check if I need init and all that
         display.setFullWindow();
@@ -1247,6 +1240,7 @@ bool Watchy::initWiFi() {
 }
 
 void Watchy::connectWiFiGUI(){
+    //TODO: add in functionality to retry wifi
     guiState = APP_STATE;  
     bool connected = initWiFi();
     display.setFullWindow();
@@ -1297,6 +1291,79 @@ void Watchy::connectWiFiGUI(){
     esp_wifi_stop();
     btStop();
 }   //connectWiFiGUI
+
+void Watchy::wifiOTA(uint8_t btnPin){
+    //TODO: add in functionality to retry wifi connection
+    guiState = APP_STATE;  
+    display.setFullWindow();
+    display.fillScreen(bgColour);
+    display.setFont(&FreeMonoBold9pt7b);
+    display.setTextColor(fgColour);
+    display.setCursor(30, 30);
+    display.println("WiFi OTA");
+    display.display(false, darkMode);//full refresh
+    display.hibernate();    //hibernate to wait for wifi to connect
+    #ifndef DEBUG
+    Serial.begin(115200);   //enable serial if not enabled already
+    #endif
+
+    bool connected = initWiFi();    //start wifi
+    if(connected){
+        ArduinoOTA
+            .onStart([]() {
+            String type;
+            if (ArduinoOTA.getCommand() == U_FLASH)
+                type = "sketch";
+            else // U_SPIFFS
+                type = "filesystem";
+
+            // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
+            Serial.println("Start updating " + type);
+            })
+            .onEnd([]() {
+            Serial.println("\nEnd");
+            })
+            .onProgress([](unsigned int progress, unsigned int total) {
+            Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+            })
+            .onError([](ota_error_t error) {
+            Serial.printf("Error[%u]: ", error);
+            if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+            else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+            else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+            else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+            else if (error == OTA_END_ERROR) Serial.println("End Failed");
+            });
+
+        ArduinoOTA.begin();
+        Serial.println("Ready");
+        Serial.print("IP address: ");
+        Serial.println(WiFi.localIP());
+        Serial.println("Press down button to cancel");
+        attachInterrupt(DOWN_BTN_PIN, ISRStopwatchEnd, RISING); //use interrupt to stop stopwatch
+        display.init(); //re-init after hibernating (waiting for wifi)
+        display.setFullWindow();
+        display.fillScreen(bgColour);
+        display.setFont(&FreeMonoBold9pt7b);
+        display.setTextColor(fgColour);
+        display.println("Connected to");
+        display.setCursor(30, 50);
+        display.println(WiFi.SSID());
+        display.setCursor(30, 70);
+        display.println("Upload code now");
+        display.setCursor(30, 90);
+        display.println("Press down to cancel");
+        display.display(true, darkMode);
+        while(true){
+            if (stopBtnPressed == true){
+                detachInterrupt(DOWN_BTN_PIN);
+                stopBtnPressed = false;
+                break;
+            }
+            ArduinoOTA.handle();
+        } //while(true)
+    } //if(connected)
+} //wifiOTA
 
 void Watchy::setISRs(){
     attachInterrupt(MENU_BTN_PIN, ISRMenuBtnPress, RISING);

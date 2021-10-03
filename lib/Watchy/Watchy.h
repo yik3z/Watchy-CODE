@@ -17,6 +17,9 @@
 #include "config.h" 
 #include "sensitive_config.h"
 #include "watchy_batt_LUT.h"
+#include <ESPmDNS.h>
+#include <WiFiUdp.h>
+#include <ArduinoOTA.h>
 
 #ifdef INCLUDE_WEATHER
 #include "Weather.h"
@@ -33,6 +36,7 @@ class Watchy {
         static GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> display;
         tmElements_t currentTime;
         esp_adc_cal_characteristics_t adc_chars;
+        esp_sleep_wakeup_cause_t wakeup_reason;
 
     public:
         Watchy();
@@ -47,10 +51,10 @@ class Watchy {
         void showBattery(uint8_t btnPin = 0);
         void showBuzz();
         void showAccelerometer();
-        void showUpdateFW();
         void setTime();
         bool initWiFi();
         void connectWiFiGUI();
+        void wifiOTA(uint8_t btnPin = 0);
         //void setupBLE();  //not yet created...or maybe a separate file for that
 
         #ifdef INCLUDE_WEATHER
@@ -66,6 +70,8 @@ class Watchy {
         virtual void drawWatchFace(); //override this method for different watch faces
 
         void setISRs();
+
+        
 
     private:
         void _rtcConfig(String datetime);    
@@ -93,5 +99,6 @@ extern RTC_DATA_ATTR bool darkMode;
 extern RTC_DATA_ATTR bool lowBatt;  
 extern RTC_DATA_ATTR bool powerSaver; //will be a user toggleable
 extern RTC_DATA_ATTR bool hourlyTimeUpdate;
+
 
 #endif

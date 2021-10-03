@@ -33,7 +33,7 @@ void Watchy7SEG::drawTime(){
     }
     display.print(currentTime.Hour);
     display.print(":");
-    if(hourlyTimeUpdate){
+    if(hourlyTimeUpdate && wakeup_reason == ESP_SLEEP_WAKEUP_EXT0){ //is hourly time update, it was an RTC (scheduled) wakeup
         display.println("xx");  
     } 
     else{

@@ -89,7 +89,7 @@
 //power saving & battery
 #define NIGHT_HOURLY_TIME_UPDATE
 #define NIGHT_HOURS_START 1
-#define NIGHT_HOURS_END 7
+#define NIGHT_HOURS_END 6
 #define LOW_BATT_THRESHOLD 15
 #define CRIT_BATT_THRESHOLD 5
 //#define USING_ACCELEROMETER 0   //boolean to decide whether the accelerometer gets initialised
