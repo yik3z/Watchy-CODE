@@ -1242,7 +1242,16 @@ bool Watchy::initWiFi() {
 void Watchy::connectWiFiGUI(){
     //TODO: add in functionality to retry wifi
     guiState = APP_STATE;  
+    display.setFullWindow();
+    display.fillScreen(bgColour);
+    display.setFont(&FreeMonoBold9pt7b);
+    display.setTextColor(fgColour);
+    display.setCursor(30, 90);
+    display.println("Connecting...");
+    display.display(false, darkMode);
+    display.hibernate();
     bool connected = initWiFi();
+    display.init(0, false);
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
@@ -1341,7 +1350,7 @@ void Watchy::wifiOTA(uint8_t btnPin){
         Serial.println(WiFi.localIP());
         Serial.println("Press down button to cancel");
         attachInterrupt(DOWN_BTN_PIN, ISRStopwatchEnd, RISING); //use interrupt to stop stopwatch
-        display.init(); //re-init after hibernating (waiting for wifi)
+        display.init(0, false); //re-init after hibernating (waiting for wifi)
         display.setFullWindow();
         display.fillScreen(bgColour);
         display.setFont(&FreeMonoBold9pt7b);
@@ -1353,7 +1362,7 @@ void Watchy::wifiOTA(uint8_t btnPin){
         display.println("Upload code now");
         display.setCursor(30, 90);
         display.println("Press down to cancel");
-        display.display(true, darkMode);
+        display.display(false, darkMode);
         while(true){
             if (stopBtnPressed == true){
                 detachInterrupt(DOWN_BTN_PIN);
