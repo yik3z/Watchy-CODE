@@ -23,6 +23,9 @@ void Watchy7SEG::drawWatchFace(){
     drawBatteryBar();
     drawBleWiFi();
     syncNtpTime();
+    if(lowBatt != 0){
+        drawLowBatt();
+    }
 }
 void Watchy7SEG::drawTime(){
     display.setFont(&DIN_Black35pt7b);
@@ -97,6 +100,19 @@ void Watchy7SEG::drawBleWiFi(){
     }
     if(WIFI_ON){ 
         display.drawBitmap(168, 20, wifi, 26, 18, fgColour);
+    }
+}
+
+
+void Watchy7SEG::drawLowBatt(){
+        display.setFont(&FreeMonoBold9pt7b);
+    if(lowBatt == 1){
+        display.setCursor(40, 50);
+        display.println("LOW BATTERY");
+    }
+    else if (lowBatt == 2){
+        display.setCursor(15, 50);
+        display.println("CRITICAL BATTERY");
     }
 }
 

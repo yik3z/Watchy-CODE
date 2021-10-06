@@ -96,7 +96,7 @@ extern RTC_DATA_ATTR bool BLE_CONFIGURED;
 extern RTC_DATA_ATTR bool darkMode;    
     extern RTC_DATA_ATTR bool fgColour; 
     extern RTC_DATA_ATTR bool bgColour;
-extern RTC_DATA_ATTR bool lowBatt;  
+extern RTC_DATA_ATTR uint8_t lowBatt;  
 extern RTC_DATA_ATTR bool powerSaver; //will be a user toggleable
 extern RTC_DATA_ATTR bool hourlyTimeUpdate;
 

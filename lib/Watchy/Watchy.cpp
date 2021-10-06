@@ -14,7 +14,7 @@ RTC_DATA_ATTR int ntpSyncTimeCounter = 0;
 RTC_DATA_ATTR bool darkMode = 0; //for darkmode. This only affects the watchface atm
     RTC_DATA_ATTR bool fgColour = GxEPD_BLACK; 
     RTC_DATA_ATTR bool bgColour = GxEPD_WHITE; 
-RTC_DATA_ATTR bool lowBatt = 0;  //0 = normal, 1 = low, 2 = critical
+RTC_DATA_ATTR uint8_t lowBatt = 0;  //0 = normal, 1 = low, 2 = critical
 RTC_DATA_ATTR bool powerSaver = 0; 
 RTC_DATA_ATTR bool hourlyTimeUpdate = 0;
 volatile uint64_t wakeupBit;
@@ -61,6 +61,34 @@ void Watchy::init(String datetime){
 
     Wire.begin(SDA, SCL); //init i2c
     display.init(0, false); //_initial_refresh to false to prevent full update on init
+    //critical battery mode
+    if(lowBatt == 2){   
+        if(!hourlyTimeUpdate){
+            RTC.setAlarm(ALM2_MATCH_MINUTES, 0, 0, 0, 0);   //set RTC alarm to hourly (0th minute of the hour)
+            hourlyTimeUpdate = 1;
+        }
+        switch (wakeup_reason)
+        {
+        case ESP_SLEEP_WAKEUP_EXT0: //RTC Alarm
+            RTC.alarm(ALARM_2); //resets the alarm flag in the RTC
+            if(guiState == WATCHFACE_STATE){
+                RTC.read(currentTime);
+                showWatchFace(true); //partial updates on tick
+            }
+        case ESP_SLEEP_WAKEUP_EXT1: //button Press
+            wakeupBit = esp_sleep_get_ext1_wakeup_status();
+            handleButtonPress();
+            break;
+        default: //reset
+            #ifndef ESP_RTC
+            _rtcConfig(datetime);
+            #endif
+            //_bmaConfig();
+            showWatchFace(false); //full update on reset
+            break;
+            }
+    }
+    else{
     switch (wakeup_reason)
     {
         #ifdef ESP_RTC
@@ -118,7 +146,6 @@ void Watchy::init(String datetime){
             setISRs();
             while(true){
                 handleButtonPress();
-                //checkBtnInterrupt();
                 if((wakeupBit == 0) || (millis() - lastButtonInterrupt > BTN_TIMEOUT)){
                     break;
                 }
@@ -135,6 +162,7 @@ void Watchy::init(String datetime){
     #ifdef DEBUG
     Serial.println("Sleep: " + String(millis()));
     #endif //DEBUG
+    }
     deepSleep();
 }
 
@@ -253,7 +281,7 @@ void Watchy::handleButtonPress(){
           showBuzz();
           break;          
         case 2:
-          showAccelerometer();
+          //showAccelerometer();
           break;
         case 3:
           setTime();
@@ -265,7 +293,7 @@ void Watchy::handleButtonPress(){
           setPowerSaver();      
           break;           
         case 6:
-          showTemperature();
+          //showTemperature();
           break;
 	    case 7:
 		  stopWatch();
@@ -294,7 +322,7 @@ void Watchy::handleButtonPress(){
           //showBuzz();
           break;          
         case 2:
-          //showAccelerometer();
+          //showAccelerometer();    //disabled
           break;
         case 3:
           //setTime();
@@ -306,7 +334,7 @@ void Watchy::handleButtonPress(){
           setPowerSaver(MENU_BTN_PIN); 
           break;                
         case 6:
-          //showTemperature();
+          //showTemperature();      /disabled
           break;
 	    case 7:
 		  stopWatch(MENU_BTN_PIN);
@@ -512,7 +540,7 @@ void Watchy::showBattery(uint8_t btnPin){
     display.setCursor(70, 150);
     display.print(percentage);
     display.println("%");
-    display.display(btnPin != 0, darkMode); //partial refresh (true) if btn pin != 0
+    display.display(true, darkMode); //partial refresh (true)
     guiState = APP_STATE;      
 }
 
@@ -904,14 +932,14 @@ void Watchy::showTemperature(uint8_t btnPin){
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
     display.setTextColor(fgColour);
-    display.setCursor(35, 30);
+    display.setCursor(40, 30);
     display.println("Temperature");
     float temperature = sensor.readTemperature();
 
     display.setCursor(70, 80);
     display.print(temperature);
     display.println(" C");
-    display.display(btnPin != 0, darkMode); //partialrefresh = true if it was already in the app
+    display.display(true, darkMode); //partialrefresh = true
 
     guiState = APP_STATE;      
 }
@@ -922,34 +950,41 @@ void Watchy::showTemperature(uint8_t btnPin){
  */
 void Watchy::stopWatch(uint8_t btnPin){
     guiState = APP_STATE;
-    if(btnPin == 0){    //entering the app for the first time
+    if((btnPin == 0) || (btnPin == UP_BTN_PIN)){    //entering the app for the first time
         finalTimeElapsed = 0;
         display.setFullWindow();
         display.fillScreen(bgColour);
         display.setFont(&FreeMonoBold9pt7b);
         display.setTextColor(fgColour);
-        display.setCursor(45, 50);
+        display.setCursor(52, 50);
         display.println("Stopwatch");
-        display.display(false, darkMode); //full refresh 
+        display.setCursor(STOPWATCH_TIME_X_0, STOPWATCH_TIME_Y_0);
+        display.print("00:00.000");
+        display.setCursor(130, 195);
+        display.println("Start>");
+        if(btnPin == UP_BTN_PIN){
+            display.setCursor(70, STOPWATCH_TIME_Y_0+20);
+            display.println("Reset!");
+        }
+        display.display(true, darkMode); //partial refresh
     }  
     else if(btnPin == DOWN_BTN_PIN){
         //start stopwatch
         unsigned long startMillis = millis();
         unsigned long previousMillis = millis();
-        //unsigned long currentMillis = millis();   //not used anymore
         attachInterrupt(DOWN_BTN_PIN, ISRStopwatchEnd, RISING); //use interrupt to stop stopwatch
 
-        //TODO check if I need init and all that
         display.setFullWindow();
         display.fillScreen(bgColour);
         display.setFont(&FreeMonoBold9pt7b);
         display.setTextColor(fgColour);
-        display.setCursor(45, 50);
+        display.setCursor(52, 50);
         display.println("Stopwatch");
-        //until here
-
         display.setCursor(STOPWATCH_TIME_X_0, STOPWATCH_TIME_Y_0);
-        display.print("0:00.000");
+        display.print("00:00.000");
+        display.setCursor(140, 195);
+        display.println("Stop>");
+
         #ifdef DEBUG
         Serial.println("Stopwatch Started");
         #endif  //DEBUG
@@ -970,41 +1005,37 @@ void Watchy::stopWatch(uint8_t btnPin){
                 unsigned long timeElapsed = previousMillis - startMillis;
                 uint16_t minutes = timeElapsed/60000;
                 uint8_t seconds = (timeElapsed % 60000)/1000;
-                //uint16_t ms = timeElapsed % 1000; //disable ms printout while counting
                 // dsiplay time
                 display.fillScreen(bgColour); 
                 //maybe can remove the next 2 lines if I fill only the time section with black
-                display.setFont(&FreeMonoBold9pt7b);
-                display.setTextColor(fgColour);
-                display.setCursor(45, 50);
+                //display.setFont(&FreeMonoBold9pt7b);
+                //display.setTextColor(fgColour);
+                display.setCursor(52, 50);
                 display.println("Stopwatch"); 
                 display.setCursor(STOPWATCH_TIME_X_0, STOPWATCH_TIME_Y_0);
+                if(minutes<10){display.print("0");}
                 display.print(minutes);
                 display.print(":");
                 if(seconds<10){display.print("0");}
                 display.print(seconds);
-                /*  //disable ms printout while counting
-                display.print(".");
-                if(ms<10){display.print("00");}
-                else if(ms<100){display.print("0");}
-                display.println(ms);
-                */
-                //display.println(previousMillis);   //debug
+                display.print(".xxx");  //no ms readout while counting
+                display.setCursor(140, 195);
+                display.println("Stop>");
                 display.display(true, darkMode); //partial refresh
                 
             } //stopwatch update loop
         }   //while true
      
         finalTimeElapsed = endMillis - startMillis; //get final time
-        //check conversion again ah
         uint16_t minutes = finalTimeElapsed/60000;
         uint8_t seconds = (finalTimeElapsed % 60000)/1000;   
         uint16_t ms = finalTimeElapsed % 1000;
         
         display.fillScreen(bgColour);
-        display.setFont(&FreeMonoBold9pt7b);
-        display.setTextColor(fgColour);  
+        //display.setFont(&FreeMonoBold9pt7b);
+        //display.setTextColor(fgColour);  //TESTING
         display.setCursor(STOPWATCH_TIME_X_0, STOPWATCH_TIME_Y_0);
+        if(minutes<10){display.print("0");}
         display.print(minutes);
         display.print(":");
         if(seconds<10){display.print("0");}
@@ -1013,23 +1044,10 @@ void Watchy::stopWatch(uint8_t btnPin){
         if(ms<10){display.print("00");}
         else if(ms<100){display.print("0");}
         display.println(ms);
-        //display.println(currentMillis);
+        display.setCursor(130, 21);
+        display.println("Reset>");
         display.display(true, darkMode); //partial refresh
     } //down button pressed
-     
-    else if(btnPin == UP_BTN_PIN){
-        //reset time
-        finalTimeElapsed = 0;
-        display.setFullWindow();
-        display.fillScreen(bgColour);
-        display.setFont(&FreeMonoBold9pt7b);
-        display.setTextColor(fgColour);
-        display.setCursor(45, 50);
-        display.println("Stopwatch");
-        display.setCursor(STOPWATCH_TIME_X_0+20, STOPWATCH_TIME_Y_0+30);
-        display.println("Reset!");
-        display.display(true, darkMode); //full refresh 
-    }
 }   //stopWatch
 
 void IRAM_ATTR ISRStopwatchEnd() {
@@ -1058,7 +1076,7 @@ void Watchy::setDarkMode(uint8_t btnPin){
     display.setCursor(70, 80);
     display.println(darkMode ? "On" : "Off");
 
-    display.display(false, darkMode); //full update
+    display.display(false, darkMode); //full update since darkmode changes the entire display
     guiState = APP_STATE;      
 }
 
@@ -1082,40 +1100,14 @@ void Watchy::setPowerSaver(uint8_t btnPin){
     Serial.println(btnPin);  
     #endif  //DEBUG
     display.println(powerSaver ? "On" : "Off");
-    if(btnPin == DOWN_BTN_PIN){
-        display.display(true, darkMode);  //partial update since we're only changing the 'darkmode' text
-    }
-    else{display.display(false, darkMode);} //full refresh
+    display.display(true, darkMode);  //partial update
     guiState = APP_STATE;    
-}
-
-/***************** OTHER STUFF THAT IDW TOUCH YET *****************/
-
-uint16_t Watchy::_readRegister(uint8_t address, uint8_t reg, uint8_t *data, uint16_t len)
-{
-    Wire.beginTransmission(address);
-    Wire.write(reg);
-    Wire.endTransmission();
-    Wire.requestFrom((uint8_t)address, (uint8_t)len);
-    uint8_t i = 0;
-    while (Wire.available()) {
-        data[i++] = Wire.read();
-    }
-    return 0;
-}
-
-uint16_t Watchy::_writeRegister(uint8_t address, uint8_t reg, uint8_t *data, uint16_t len)
-{
-    Wire.beginTransmission(address);
-    Wire.write(reg);
-    Wire.write(data, len);
-    return (0 !=  Wire.endTransmission());
 }
 
 //TODO: work in progress, crashes watchy
 void Watchy::_bmaConfig(){
     #ifndef USING_ACCELEROMETER
-    sensor.softReset();
+    //sensor.softReset();
 
     #else
     if (sensor.begin(_readRegister, _writeRegister, delay) == false) {
@@ -1254,7 +1246,7 @@ void Watchy::connectWiFiGUI(){
     display.init(0, false);
     display.setFullWindow();
     display.fillScreen(bgColour);
-    display.setFont(&FreeMonoBold9pt7b);
+    //display.setFont(&FreeMonoBold9pt7b);
     display.setTextColor(fgColour);
     display.setCursor(30, 30);
     if(connected){
@@ -1308,14 +1300,15 @@ void Watchy::wifiOTA(uint8_t btnPin){
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
     display.setTextColor(fgColour);
-    display.setCursor(30, 30);
+    display.setCursor(55, 80);
     display.println("WiFi OTA");
-    display.display(false, darkMode);//full refresh
+    display.setCursor(33, 110);
+    display.println("Connecting...");
+    display.display(true, darkMode);//full refresh
     display.hibernate();    //hibernate to wait for wifi to connect
     #ifndef DEBUG
     Serial.begin(115200);   //enable serial if not enabled already
     #endif
-
     bool connected = initWiFi();    //start wifi
     if(connected){
         ArduinoOTA
@@ -1349,29 +1342,47 @@ void Watchy::wifiOTA(uint8_t btnPin){
         Serial.print("IP address: ");
         Serial.println(WiFi.localIP());
         Serial.println("Press down button to cancel");
-        attachInterrupt(DOWN_BTN_PIN, ISRStopwatchEnd, RISING); //use interrupt to stop stopwatch
+        attachInterrupt(DOWN_BTN_PIN, ISRStopwatchEnd, RISING); //use the same stopwatch interrupt function to stop OTA
+
         display.init(0, false); //re-init after hibernating (waiting for wifi)
         display.setFullWindow();
         display.fillScreen(bgColour);
-        display.setFont(&FreeMonoBold9pt7b);
-        display.setTextColor(fgColour);
+        //display.setTextColor(fgColour);   //TESTING
+        display.setCursor(37, 40);
         display.println("Connected to");
-        display.setCursor(30, 50);
+        display.setCursor(40, 60);
         display.println(WiFi.SSID());
-        display.setCursor(30, 70);
+        display.setCursor(20, 100);
         display.println("Upload code now");
-        display.setCursor(30, 90);
-        display.println("Press down to cancel");
-        display.display(false, darkMode);
+        display.setCursor(120, 195);
+        display.println("Cancel>"); 
+        display.display(true, darkMode);
+        display.hibernate();
         while(true){
             if (stopBtnPressed == true){
                 detachInterrupt(DOWN_BTN_PIN);
                 stopBtnPressed = false;
                 break;
             }
-            ArduinoOTA.handle();
+            ArduinoOTA.handle();    //no display updates here because it'll probably break the OTA update. A successful OTA should reboot the ESP
         } //while(true)
     } //if(connected)
+    //if we get this far it means the OTA loop was cancelled
+
+    //turn off WiFi
+    WiFi.mode(WIFI_OFF);
+    esp_wifi_stop();
+    btStop();
+
+    //update screen
+    display.init(0, false); //re-init after hibernating
+    display.setFullWindow();
+    display.fillScreen(bgColour);
+    //display.setFont(&FreeMonoBold9pt7b);
+    //display.setTextColor(fgColour);
+    display.setCursor(40, 110);
+    display.println("OTA Aborted");
+    display.display(true, darkMode); //partial refresh
 } //wifiOTA
 
 void Watchy::setISRs(){
@@ -1387,7 +1398,7 @@ void IRAM_ATTR ISRMenuBtnPress() {
         wakeupBit = MENU_BTN_MASK;
         #ifdef DEBUG
         //SERIAL.PRINT IN ISR. TRY NOT TO USE THIS UNLESS YOU REALLY NEED IT!!
-        Serial.println("M_ISR: " + String(lastButtonInterrupt));
+        //Serial.println("M_ISR: " + String(lastButtonInterrupt));
         #endif
     }
     
@@ -1399,7 +1410,7 @@ void IRAM_ATTR ISRBackBtnPress() {
         wakeupBit = BACK_BTN_MASK;
         #ifdef DEBUG
         //SERIAL.PRINT IN ISR. TRY NOT TO USE THIS UNLESS YOU REALLY NEED IT!!
-        Serial.println("B_ISR: " + String(lastButtonInterrupt));
+        //Serial.println("B_ISR: " + String(lastButtonInterrupt));
         #endif
 
     }
@@ -1411,7 +1422,7 @@ void IRAM_ATTR ISRUpBtnPress() {
         wakeupBit = UP_BTN_MASK;
         #ifdef DEBUG
         //SERIAL.PRINT IN ISR. TRY NOT TO USE THIS UNLESS YOU REALLY NEED IT!!
-        Serial.println("U_ISR: " + String(lastButtonInterrupt));
+        //Serial.println("U_ISR: " + String(lastButtonInterrupt));
         #endif
 
     }
@@ -1423,12 +1434,32 @@ void IRAM_ATTR ISRDownBtnPress() {
         wakeupBit = DOWN_BTN_MASK;
         #ifdef DEBUG
         //SERIAL.PRINT IN ISR. TRY NOT TO USE THIS UNLESS YOU REALLY NEED IT!!
-        Serial.println("D_ISR: " + String(lastButtonInterrupt));
+        //Serial.println("D_ISR: " + String(lastButtonInterrupt));
         #endif
 
     }
 }
 
+uint16_t Watchy::_readRegister(uint8_t address, uint8_t reg, uint8_t *data, uint16_t len)
+{
+    Wire.beginTransmission(address);
+    Wire.write(reg);
+    Wire.endTransmission();
+    Wire.requestFrom((uint8_t)address, (uint8_t)len);
+    uint8_t i = 0;
+    while (Wire.available()) {
+        data[i++] = Wire.read();
+    }
+    return 0;
+}
+
+uint16_t Watchy::_writeRegister(uint8_t address, uint8_t reg, uint8_t *data, uint16_t len)
+{
+    Wire.beginTransmission(address);
+    Wire.write(reg);
+    Wire.write(data, len);
+    return (0 !=  Wire.endTransmission());
+}
 
 /***************** UNUSED CODE *****************/
 /*

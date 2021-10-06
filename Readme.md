@@ -86,4 +86,9 @@
 	
 # PlatformIO Stuff
 
-coming soon
+coming sometime
+
+# Quick Notes
+## Fonts
+DPI is 141
+[Font converter](https://rop.nl/truetype2gfx/) for ttf fonts

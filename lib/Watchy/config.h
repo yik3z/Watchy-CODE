@@ -51,7 +51,7 @@
 //#define FW_UPDATE_STATE 2
 
 //stopwatch
-#define STOPWATCH_TIME_X_0 50
+#define STOPWATCH_TIME_X_0 52
 #define STOPWATCH_TIME_Y_0 100
 #define STOPWATCH_INTERVAL 1000  //stopwatch dsiplay update rate in ms
 
