@@ -61,6 +61,7 @@ void Watchy::init(String datetime){
 
     Wire.begin(SDA, SCL); //init i2c
     display.init(0, false); //_initial_refresh to false to prevent full update on init
+    
     //critical battery mode
     if(lowBatt == 2){   
         if(!hourlyTimeUpdate){
@@ -88,6 +89,8 @@ void Watchy::init(String datetime){
             break;
             }
     }
+
+    //not critical batt
     else{
     switch (wakeup_reason)
     {

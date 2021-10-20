@@ -107,11 +107,11 @@ void Watchy7SEG::drawBleWiFi(){
 void Watchy7SEG::drawLowBatt(){
         display.setFont(&FreeMonoBold9pt7b);
     if(lowBatt == 1){
-        display.setCursor(40, 50);
+        display.setCursor(40, 190);
         display.println("LOW BATTERY");
     }
     else if (lowBatt == 2){
-        display.setCursor(15, 50);
+        display.setCursor(15, 190);
         display.println("CRITICAL BATTERY");
     }
 }
