@@ -3,8 +3,10 @@
 
 const uint8_t BATTERY_BAR_HEIGHT = 4; 
 const uint8_t DATE_TIME_X_0 = 15;
-const uint8_t TIME_Y_0 = 110; 
-const uint8_t DATE_Y_0 = 144;
+const uint8_t TIME_Y_0 = 120; 
+const uint8_t DATE_X_0 = 137; 
+const uint8_t DATE_Y_0 = 154;
+const uint8_t SPLITTER_LENGTH = 165;
 const uint8_t TEMPERATURE_X_0 = 145;
 const uint8_t TEMPERATURE_Y_0 = 175;
 
@@ -27,6 +29,7 @@ void Watchy7SEG::drawWatchFace(){
         drawLowBatt();
     }
 }
+
 void Watchy7SEG::drawTime(){
     display.setFont(&DIN_Black35pt7b);
 
@@ -50,14 +53,14 @@ void Watchy7SEG::drawTime(){
 void Watchy7SEG::drawDate(){
 
     //divider line
-    display.fillRect(DATE_TIME_X_0, TIME_Y_0 + 10, 165, 3, fgColour);
+    display.fillRect(DATE_TIME_X_0, TIME_Y_0 + 10, SPLITTER_LENGTH, 3, fgColour);
 
     display.setFont(&DIN_Medium10pt7b);
     String dayOfWeek = dayStr(currentTime.Wday);
     display.setCursor(DATE_TIME_X_0, DATE_Y_0);
     display.println(dayOfWeek);
 
-    display.setCursor(113, DATE_Y_0);
+    display.setCursor(DATE_X_0, DATE_Y_0);
     if(currentTime.Day < 10){
     display.print("0");      
     }     
@@ -68,11 +71,11 @@ void Watchy7SEG::drawDate(){
     display.print("0");      
     }
     display.print(currentTime.Month);
+    /* //removed year printout
     display.print("."); 
     uint16_t yearTwoDigits = currentTime.Year + YEAR_OFFSET - 2000; //to get '21 hehe
     display.println(yearTwoDigits); // offset from 1970, since year is stored in uint8_t
-
-    
+    */    
 }
 
 void Watchy7SEG::drawBatteryBar(){
@@ -96,10 +99,10 @@ void Watchy7SEG::drawBatteryBar(){
 }
 void Watchy7SEG::drawBleWiFi(){
     if(BLE_CONFIGURED){ 
-        display.drawBitmap(150, 20, bluetooth, 13, 21, fgColour);
+        display.drawBitmap(150, 20, bluetoothIcon, 13, 21, fgColour);
     }
     if(WIFI_ON){ 
-        display.drawBitmap(168, 20, wifi, 26, 18, fgColour);
+        display.drawBitmap(168, 20, wifiIcon, 26, 18, fgColour);
     }
 }
 
@@ -107,12 +110,10 @@ void Watchy7SEG::drawBleWiFi(){
 void Watchy7SEG::drawLowBatt(){
         display.setFont(&FreeMonoBold9pt7b);
     if(lowBatt == 1){
-        display.setCursor(40, 190);
-        display.println("LOW BATTERY");
+        display.drawBitmap(150, 20, lowBattIcon, 3, 8, fgColour);
     }
     else if (lowBatt == 2){
-        display.setCursor(15, 190);
-        display.println("CRITICAL BATTERY");
+        display.drawBitmap(150, 20, noBattIcon, 1, 0, fgColour);
     }
 }
 
