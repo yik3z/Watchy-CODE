@@ -3,9 +3,11 @@
 
 const uint8_t BATTERY_BAR_HEIGHT = 4; 
 const uint8_t DATE_TIME_X_0 = 15;
-const uint8_t TIME_Y_0 = 120; 
+const uint8_t DARK_TIME_Y_0 = 120; 
+const uint8_t LIGHT_TIME_Y_0 = 110; 
 const uint8_t DATE_X_0 = 137; 
-const uint8_t DATE_Y_0 = 154;
+const uint8_t DARK_DATE_Y_0 = 154;
+const uint8_t LIGHT_DATE_Y_0 = 144;
 const uint8_t SPLITTER_LENGTH = 165;
 const uint8_t TEMPERATURE_X_0 = 145;
 const uint8_t TEMPERATURE_Y_0 = 175;
@@ -32,8 +34,11 @@ void Watchy7SEG::drawWatchFace(){
 
 void Watchy7SEG::drawTime(){
     display.setFont(&DIN_Black35pt7b);
-
-    display.setCursor(DATE_TIME_X_0 - 5, TIME_Y_0);
+    if(darkMode){
+        display.setCursor(DATE_TIME_X_0 - 5, DARK_TIME_Y_0);
+    } else {
+        display.setCursor(DATE_TIME_X_0 - 5, LIGHT_TIME_Y_0);
+    }
     if(currentTime.Hour < 10){
         display.print("0");
     }
@@ -53,14 +58,24 @@ void Watchy7SEG::drawTime(){
 void Watchy7SEG::drawDate(){
 
     //divider line
-    display.fillRect(DATE_TIME_X_0, TIME_Y_0 + 10, SPLITTER_LENGTH, 3, fgColour);
-
+    if(darkMode){
+        display.fillRect(DATE_TIME_X_0, DARK_TIME_Y_0 + 10, SPLITTER_LENGTH, 3, fgColour);
+    } else{
+        display.fillRect(DATE_TIME_X_0, LIGHT_TIME_Y_0 + 10, SPLITTER_LENGTH, 3, fgColour);
+    }
     display.setFont(&DIN_Medium10pt7b);
     String dayOfWeek = dayStr(currentTime.Wday);
-    display.setCursor(DATE_TIME_X_0, DATE_Y_0);
+    if(darkMode){
+        display.setCursor(DATE_TIME_X_0, DARK_DATE_Y_0);
+    } else{
+        display.setCursor(DATE_TIME_X_0, LIGHT_DATE_Y_0);
+    }
     display.println(dayOfWeek);
-
-    display.setCursor(DATE_X_0, DATE_Y_0);
+    if(darkMode){
+        display.setCursor(DATE_X_0, DARK_DATE_Y_0);
+    } else{
+        display.setCursor(DATE_X_0, LIGHT_DATE_Y_0);
+    }
     if(currentTime.Day < 10){
     display.print("0");      
     }     

@@ -27,7 +27,7 @@ bool stopBtnPressed = false;
 volatile unsigned long lastButtonInterrupt;  //si the last button time pressed
 
 
-const char *menuItems[] = {"Check Battery", "Vibrate Motor", "Show Accelerometer", "Set Time","Dark/Light Mode","Power Saver","Show Temperature","Stopwatch","Sync Time (WiFi)","WiFi OTA"};
+const char *menuItems[] = {"Check Battery", "Vibrate Motor", "Show Accelerometer", "Set Time","Dark/Light Mode","Power Saver","Show Temperature","Stopwatch","Sync NTP Time","WiFi OTA"};
 int16_t menuOptions = sizeof(menuItems) / sizeof(menuItems[0]);
 
 String getValue(String data, char separator, int index)
@@ -1078,8 +1078,11 @@ void Watchy::setDarkMode(uint8_t btnPin){
     display.println("Dark Mode");
     display.setCursor(70, 80);
     display.println(darkMode ? "On" : "Off");
-
-    display.display(false, darkMode); //full update since darkmode changes the entire display
+    if(btnPin == DOWN_BTN_PIN){
+        display.display(false, darkMode); //full update since darkmode changes the entire display
+    } else{
+        display.display(true, darkMode); //partial update
+    }
     guiState = APP_STATE;      
 }
 
