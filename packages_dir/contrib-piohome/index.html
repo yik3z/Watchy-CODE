@@ -18,6 +18,15 @@
       return null;
     }
 
+    /**
+     * Re-broadcast events for VSCode
+     * See https://github.com/microsoft/vscode/issues/135017
+     */
+     window.addEventListener('message', (e) => {
+      if (e.data.command === 'execCommand') {
+        document.execCommand(e.data.data);
+      }
+    });
     function onDidKeyDown(e) {
       const obj = {
         altKey: e.altKey,
@@ -50,7 +59,7 @@
     if (pathname[pathname.length - 1] !== '/') {
       pathname += '/';
     }
-    link.href = pathname + 'themes/' + workspace + '.' + theme + '.29710b817d31d4f2a223180b27969c3393a8af65.min.css';
+    link.href = pathname + 'themes/' + workspace + '.' + theme + '.6b99026462ce7ab134109f9ba42bca62d391c4fa.min.css';
     link.type = 'text/css';
     link.rel = 'stylesheet';
-    document.getElementsByTagName('head')[0].appendChild(link);</script><div id="app">Loading...</div><script defer="defer" src="./vendor.29710b817d31d4f2a223180b27969c3393a8af65.min.js"></script><script defer="defer" src="./main.29710b817d31d4f2a223180b27969c3393a8af65.min.js"></script></body></html>
+    document.getElementsByTagName('head')[0].appendChild(link);</script><div id="app">Loading...</div><script defer="defer" src="./vendor.6b99026462ce7ab134109f9ba42bca62d391c4fa.min.js"></script><script defer="defer" src="./main.6b99026462ce7ab134109f9ba42bca62d391c4fa.min.js"></script></body></html>

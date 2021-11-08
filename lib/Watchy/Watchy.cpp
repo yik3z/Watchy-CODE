@@ -159,6 +159,7 @@ void Watchy::init(String datetime){
             _rtcConfig(datetime);
             #endif
             //_bmaConfig();
+            vibMotor(200, 4);
             showWatchFace(false); //full update on reset
             break;
     }
@@ -575,6 +576,7 @@ void Watchy::vibMotor(uint8_t intervalMs, uint8_t length){
         digitalWrite(VIB_MOTOR_PIN, motorOn);
         delay(intervalMs);
     }
+    digitalWrite(VIB_MOTOR_PIN, 0);
 }
 
 void Watchy::setTime(){

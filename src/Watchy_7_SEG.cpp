@@ -125,10 +125,10 @@ void Watchy7SEG::drawBleWiFi(){
 void Watchy7SEG::drawLowBatt(){
         display.setFont(&FreeMonoBold9pt7b);
     if(lowBatt == 1){
-        display.drawBitmap(150, 20, lowBattIcon, 3, 8, fgColour);
+        display.drawBitmap(3, 8, lowBattIcon, 16, 9, fgColour);
     }
     else if (lowBatt == 2){
-        display.drawBitmap(150, 20, noBattIcon, 1, 0, fgColour);
+        display.drawBitmap(1, 0, noBattIcon, 19, 15, fgColour);
     }
 }
 
