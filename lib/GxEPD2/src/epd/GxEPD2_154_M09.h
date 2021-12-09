@@ -30,6 +30,10 @@ class GxEPD2_154_M09 : public GxEPD2_EPD
     static const uint16_t power_off_time = 100; // ms, e.g. 62091us
     static const uint16_t full_refresh_time = 1000; // ms, e.g. 924485us
     static const uint16_t partial_refresh_time = 400; // ms, e.g. 324440us
+
+    //custom stuff
+    uint8_t borderColour = 0; //0 = black, 1 = white
+
     // constructor
     GxEPD2_154_M09(int8_t cs, int8_t dc, int8_t rst, int8_t busy);
     // methods (virtual)

@@ -356,8 +356,12 @@ void GxEPD2_154_M09::_InitDisplay()
   _writeData (0x12);
   _writeCommand(0x30); // PLL control
   _writeData (0x3C);   // default 50Hz
-  _writeCommand(0X50); // VCOM and data interval
+  _writeCommand(0X50); // VCOM and data interval + V border
   _writeData(0x97);//
+  //_writeCommand(0x50); // V Border
+  uint8_t CDInDDX = 0b10010111;
+  uint8_t borderData = 0b000000;
+  //_writeData(borderColour ? 0x02 : 0x05);    //0x05 for white or 0x02 for black border
   _writeCommand(0XE3); // power saving register
   _writeData(0x00); // default
 }
