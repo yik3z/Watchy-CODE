@@ -1,6 +1,6 @@
 {
   "name": "tool-scons",
-  "version": "4.40200.0",
+  "version": "4.40300.1",
   "description": "SCons software construction tool",
   "keywords": [
     "build tools",

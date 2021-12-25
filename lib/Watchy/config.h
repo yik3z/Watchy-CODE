@@ -72,8 +72,8 @@
 #define SET_MONTH 3
 #define SET_DAY 4
 #define YEAR_OFFSET 1970
-#define NTP_TIME_SYNC_INTERVAL 10080 // once every 7 days. ie 7days * 24h * 60min
-#define GMT_OFFSET_SEC 28800 // set time zone to central standard time
+#define NTP_TIME_SYNC_INTERVAL 10080 // in minutes. Set to once every 7 days. ie 7days * 24h * 60min
+#define GMT_OFFSET_SEC -18000 // set time zone to central standard time
                                 // ie UTC -6 * 60 * 60 = -21600
 #define DAYLIGHT_OFFSET_SEC 0 // if observing Daylight saving time 3600 otherwise 0
 #define NTP_SERVER "pool.ntp.org"
