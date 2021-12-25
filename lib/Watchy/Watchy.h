@@ -33,7 +33,7 @@ typedef struct weatherData{
 class Watchy {
     public:
         static DS3232RTC RTC;
-        static GxEPD2_BW<GxEPD2_154_M09, GxEPD2_154_M09::HEIGHT> display;
+        static GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> display;
         tmElements_t currentTime;
         esp_adc_cal_characteristics_t adc_chars;
         esp_sleep_wakeup_cause_t wakeup_reason;

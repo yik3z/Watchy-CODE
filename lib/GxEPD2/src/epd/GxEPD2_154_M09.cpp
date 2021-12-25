@@ -10,8 +10,6 @@
 // Version: see library.properties
 //
 // Library: https://github.com/ZinggJM/GxEPD2
-//
-// This code has been modified from the library
 
 #include "GxEPD2_154_M09.h"
 
@@ -22,7 +20,6 @@ GxEPD2_154_M09::GxEPD2_154_M09(int8_t cs, int8_t dc, int8_t rst, int8_t busy) :
 
 void GxEPD2_154_M09::clearScreen(uint8_t value)
 {
-  Serial.println("Clear Screen");
   writeScreenBuffer(value);
   refresh(true);
   writeScreenBufferAgain(value);
@@ -30,10 +27,10 @@ void GxEPD2_154_M09::clearScreen(uint8_t value)
 
 void GxEPD2_154_M09::writeScreenBuffer(uint8_t value)
 {
+  _initial_write = false; // initial full screen buffer clean done
   if (!_using_partial_mode) _Init_Part();
   _writeScreenBuffer(0x13, value); // set current
-  if (_initial_write) _writeScreenBuffer(0x10, value); // set previous  //CHANGED from _initial_refresh
-    _initial_write = false; // initial full screen buffer clean done
+  if (_initial_refresh) _writeScreenBuffer(0x26, value); // set previous
 }
 
 void GxEPD2_154_M09::writeScreenBufferAgain(uint8_t value)
@@ -53,23 +50,17 @@ void GxEPD2_154_M09::_writeScreenBuffer(uint8_t command, uint8_t value)
 
 void GxEPD2_154_M09::writeImage(const uint8_t bitmap[], int16_t x, int16_t y, int16_t w, int16_t h, bool invert, bool mirror_y, bool pgm)
 {
-  //Serial.println("WriteImage");
   _writeImage(0x13, bitmap, x, y, w, h, invert, mirror_y, pgm);
 }
 
 void GxEPD2_154_M09::writeImageAgain(const uint8_t bitmap[], int16_t x, int16_t y, int16_t w, int16_t h, bool invert, bool mirror_y, bool pgm)
 {
-  //Serial.println("WriteImage Again");
   _writeImage(0x10, bitmap, x, y, w, h, invert, mirror_y, pgm);
 }
 
 void GxEPD2_154_M09::_writeImage(uint8_t command, const uint8_t bitmap[], int16_t x, int16_t y, int16_t w, int16_t h, bool invert, bool mirror_y, bool pgm)
 {
-  Serial.println("_writeImg, buff: " + String(command));
-  if (_initial_write) {
-    writeScreenBuffer(); // initial full screen buffer clean
-    Serial.println("Initial Write");
-  }
+  if (_initial_write) writeScreenBuffer(); // initial full screen buffer clean
   delay(1); // yield() to avoid WDT on ESP8266 and ESP32
   int16_t wb = (w + 7) / 8; // width bytes, bitmaps are padded
   x -= x % 8; // byte boundary
@@ -83,8 +74,9 @@ void GxEPD2_154_M09::_writeImage(uint8_t command, const uint8_t bitmap[], int16_
   w1 -= dx;
   h1 -= dy;
   if ((w1 <= 0) || (h1 <= 0)) return;
-  //if (!_using_partial_mode) _Init_Part();
-  if(_using_partial_mode) _setPartialRamArea(x1, y1, w1, h1);
+  if (!_using_partial_mode) _Init_Part();
+  _writeCommand(0x91); // partial in
+  _setPartialRamArea(x1, y1, w1, h1);
   _writeCommand(command);
   for (int16_t i = 0; i < h1; i++)
   {
@@ -109,8 +101,7 @@ void GxEPD2_154_M09::_writeImage(uint8_t command, const uint8_t bitmap[], int16_
       _writeData(data);
     }
   }
- // _writeCommand(0x92); // partial out
-  //Serial.println("PartialOut");
+  _writeCommand(0x92); // partial out
   delay(1); // yield() to avoid WDT on ESP8266 and ESP32
 }
 
@@ -129,7 +120,6 @@ void GxEPD2_154_M09::writeImagePartAgain(const uint8_t bitmap[], int16_t x_part,
 void GxEPD2_154_M09::_writeImagePart(uint8_t command, const uint8_t bitmap[], int16_t x_part, int16_t y_part, int16_t w_bitmap, int16_t h_bitmap,
                                      int16_t x, int16_t y, int16_t w, int16_t h, bool invert, bool mirror_y, bool pgm)
 {
-  Serial.println("_writeImgPrt, buff: " + String(command));
   if (_initial_write) writeScreenBuffer(); // initial full screen buffer clean
   delay(1); // yield() to avoid WDT on ESP8266 and ESP32
   if ((w_bitmap < 0) || (h_bitmap < 0) || (w < 0) || (h < 0)) return;
@@ -152,7 +142,6 @@ void GxEPD2_154_M09::_writeImagePart(uint8_t command, const uint8_t bitmap[], in
   if ((w1 <= 0) || (h1 <= 0)) return;
   if (!_using_partial_mode) _Init_Part();
   _writeCommand(0x91); // partial in
-  Serial.println("PartialIn");
   _setPartialRamArea(x1, y1, w1, h1);
   _writeCommand(command);
   for (int16_t i = 0; i < h1; i++)
@@ -179,7 +168,6 @@ void GxEPD2_154_M09::_writeImagePart(uint8_t command, const uint8_t bitmap[], in
     }
   }
   _writeCommand(0x92); // partial out
-  Serial.println("PartialOut");
   delay(1); // yield() to avoid WDT on ESP8266 and ESP32
 }
 
@@ -251,7 +239,7 @@ void GxEPD2_154_M09::drawNative(const uint8_t* data1, const uint8_t* data2, int1
 void GxEPD2_154_M09::refresh(bool partial_update_mode)
 {
   if (partial_update_mode) refresh(0, 0, WIDTH, HEIGHT);
-  else  //full update mode
+  else
   {
     if (_using_partial_mode) _Init_Full();
     _Update_Full();
@@ -261,7 +249,6 @@ void GxEPD2_154_M09::refresh(bool partial_update_mode)
 
 void GxEPD2_154_M09::refresh(int16_t x, int16_t y, int16_t w, int16_t h)
 {
-  Serial.println("Refresh Partial");
   if (_initial_refresh) return refresh(false); // initial update needs be full update
   x -= x % 8; // byte boundary
   w -= x % 8; // byte boundary
@@ -271,13 +258,11 @@ void GxEPD2_154_M09::refresh(int16_t x, int16_t y, int16_t w, int16_t h)
   int16_t h1 = y + h < int16_t(HEIGHT) ? h : int16_t(HEIGHT) - y; // limit
   w1 -= x1 - x;
   h1 -= y1 - y;
-  //if (!_using_partial_mode) _Init_Part();
-  //_writeCommand(0x91); // partial in
-  //Serial.println("PartialIn");
-  //_setPartialRamArea(x1, y1, w1, h1);
+  if (!_using_partial_mode) _Init_Part();
+  _writeCommand(0x91); // partial in
+  _setPartialRamArea(x1, y1, w1, h1);
   _Update_Part();
-  //_writeCommand(0x92); // partial out
-  //Serial.println("PartialOut");
+  _writeCommand(0x92); // partial out
 }
 
 void GxEPD2_154_M09::powerOff(void)
@@ -287,9 +272,7 @@ void GxEPD2_154_M09::powerOff(void)
 
 void GxEPD2_154_M09::hibernate()
 {
-  _writeCommand(0x50);  //cHANGED: added
-  _writeData(0xf7);     //cHANGED: added
-  _PowerOff();  //TODO seems like it doesn't power off ever if even one partial update is done
+  _PowerOff();
   if (_rst >= 0)
   {
     _writeCommand(0x07); // deep sleep
@@ -300,22 +283,18 @@ void GxEPD2_154_M09::hibernate()
 
 void GxEPD2_154_M09::_setPartialRamArea(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
 {
-  uint16_t xe = x + w;
-  uint16_t ye = y + h;
-  if (xe >199){
-    xe = 199;
-  }
-  if (ye >199){
-    ye = 199;
-  }
+  uint16_t xe = (x + w - 1) | 0x0007; // byte boundary inclusive (last byte)
+  uint16_t ye = y + h - 1;
+  x &= 0xFFF8; // byte boundary
   _writeCommand(0x90); // partial window
-  
-  _writeData(x & 0xFFF8);
-  _writeData(xe | 0b111);
-  _writeData(0);
-  _writeData(y);
-  _writeData(0);
-  _writeData(ye);
+  //_writeData(x / 256);
+  _writeData(x % 256);
+  //_writeData(xe / 256);
+  _writeData(xe % 256);
+  _writeData(y / 256);
+  _writeData(y % 256);
+  _writeData(ye / 256);
+  _writeData(ye % 256);
   _writeData(0x01); // don't see any difference
   //_writeData(0x00); // don't see any difference
 }
@@ -324,7 +303,6 @@ void GxEPD2_154_M09::_PowerOn()
 {
   if (!_power_is_on)
   {
-    Serial.println("PwrOn");
     _writeCommand(0x04);
     _waitWhileBusy("_PowerOn", power_on_time);
   }
@@ -335,8 +313,7 @@ void GxEPD2_154_M09::_PowerOff()
 {
   if (_power_is_on)
   {
-    //if (_using_partial_mode) _Update_Part();//_InitDisplay();  // would hang on _powerOn() without
-    Serial.println("PwrOff");
+    if (_using_partial_mode) _Update_Part(); // would hang on _powerOn() without
     _writeCommand(0x02); // power off
     _waitWhileBusy("_PowerOff", power_off_time);
     _power_is_on = false;
@@ -348,13 +325,13 @@ void GxEPD2_154_M09::_InitDisplay()
 {
   if (_hibernating) _reset();
   _writeCommand(0x00); // panel setting
-  _writeData (0xff);  
-  _writeData (0x09);  //was 0x0e
-  //_writeCommand(0x01); // power setting
-  //_writeData(0x03);
-  //_writeData(0x06); // 16V
-  //_writeData(0x2A);//
-  //_writeData(0x2A);//
+  _writeData (0xff);
+  _writeData (0x0e);
+  _writeCommand(0x01); // power setting
+  _writeData(0x03);
+  _writeData(0x06); // 16V
+  _writeData(0x2A);//
+  _writeData(0x2A);//
   _writeCommand(0x4D); // FITIinternal code
   _writeData (0x55);
   _writeCommand(0xaa);
@@ -365,25 +342,24 @@ void GxEPD2_154_M09::_InitDisplay()
   _writeData (0x11);
   _writeCommand(0xF3);
   _writeData (0x0a);
-  //_writeCommand(0x06); // boost soft start
-  //_writeData (0xc7);
-  //_writeData (0x0c);
-  //_writeData (0x0c);
+  _writeCommand(0x06); // boost soft start
+  _writeData (0xc7);
+  _writeData (0x0c);
+  _writeData (0x0c);
   _writeCommand(0x61); // resolution setting
-  _writeData (0b11001000); // was 200 (0xc8), changed to 25<<3
+  _writeData (0xc8); // 200
   _writeData (0x00);
   _writeData (0xc8); // 200
   _writeCommand(0x60); // Tcon setting
   _writeData (0x00);
-  //_writeCommand(0x82); // VCOM DC setting
-  //_writeData (0x12);
-  //_writeCommand(0x30); // PLL control
-  //_writeData (0x3C);   // default 50Hz
-  _writeCommand(0X50); // VCOM and data interval + V border
-  _writeData(0x97);    //or 0x57 for black border, 0x97 for white
+  _writeCommand(0x82); // VCOM DC setting
+  _writeData (0x12);
+  _writeCommand(0x30); // PLL control
+  _writeData (0x3C);   // default 50Hz
+  _writeCommand(0X50); // VCOM and data interval
+  _writeData(0x97);//
   _writeCommand(0XE3); // power saving register
-  _writeData(0x00);    // default
-
+  _writeData(0x00); // default
 }
 
 const unsigned char GxEPD2_154_M09::lut_20_vcomDC[] PROGMEM =
@@ -501,14 +477,8 @@ const unsigned char GxEPD2_154_M09::lut_24_bb_partial[] PROGMEM =
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
-void GxEPD2_154_M09::initFull(){
-  _Init_Full();
-}
-
-//inits display in preparation for full mode
 void GxEPD2_154_M09::_Init_Full()
 {
-  Serial.println("Init Full");
   _InitDisplay();
   _writeCommand(0x20);
   _writeDataPGM(lut_20_vcomDC, sizeof(lut_20_vcomDC));
@@ -520,26 +490,12 @@ void GxEPD2_154_M09::_Init_Full()
   _writeDataPGM(lut_23_wb, sizeof(lut_23_wb));
   _writeCommand(0x24);
   _writeDataPGM(lut_24_bb, sizeof(lut_24_bb));
-  //_PowerOn();
+  _PowerOn();
   _using_partial_mode = false;
-}
-
-//inits partial mode and sets display to partial mode in
-void GxEPD2_154_M09::initPart(){
-  _Init_Part();
-  _writeCommand(0x91);  //partial in
-}
-
-//partial mode out
-void GxEPD2_154_M09::partialOut(){
-  _writeCommand(0x92);  //partial out
-  _using_partial_mode = false;
-
 }
 
 void GxEPD2_154_M09::_Init_Part()
 {
-  Serial.println("Init Part");
   _InitDisplay();
   _writeCommand(0x20);
   _writeDataPGM(lut_20_vcomDC_partial, sizeof(lut_20_vcomDC_partial));
@@ -551,22 +507,18 @@ void GxEPD2_154_M09::_Init_Part()
   _writeDataPGM(lut_23_wb_partial, sizeof(lut_23_wb_partial));
   _writeCommand(0x24);
   _writeDataPGM(lut_24_bb_partial, sizeof(lut_24_bb_partial));
-  //_PowerOn();
+  _PowerOn();
   _using_partial_mode = true;
 }
 
 void GxEPD2_154_M09::_Update_Full()
 {
-  _PowerOn(); //turn on power just before refreshing
-  Serial.println("Update Full");
   _writeCommand(0x12); //display refresh
   _waitWhileBusy("_Update_Full", full_refresh_time);
 }
 
 void GxEPD2_154_M09::_Update_Part()
 {
-  _PowerOn(); //turn on power just before refreshing
-  Serial.println("Update Part");
   _writeCommand(0x12); //display refresh
   _waitWhileBusy("_Update_Part", partial_refresh_time);
 }

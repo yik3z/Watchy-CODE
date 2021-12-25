@@ -171,30 +171,17 @@ class GxEPD2_BW : public GxEPD2_GFX_BASE_CLASS
     }
 
     // display buffer content to screen, useful for full screen buffer
-    void display(bool partial_update_mode = false, bool darkMode = false)
+    void display(bool partial_update_mode = false, bool blackBorder = 0)
     {
-      //partial_update_mode = false;  //force full update always
-      Serial.println("Display");
-      if (partial_update_mode){
-        epd2.initPart();
-        epd2.writeImageAgain(_old_buffer, 0, 0, WIDTH, _page_height); //writes the previous buffer to OLD register, becasue it seems like buffers are cleared upon reset
-        epd2.writeImage(_buffer, 0, 0, WIDTH, _page_height);
-        
-      }
-      else {
-      epd2.initFull();
-      epd2.writeImageForFullRefresh(_buffer, 0, 0, WIDTH, _page_height);
-      }
+      epd2.borderColour = blackBorder;
+      if (partial_update_mode) epd2.writeImage(_buffer, 0, 0, WIDTH, _page_height);
+      else epd2.writeImageForFullRefresh(_buffer, 0, 0, WIDTH, _page_height);
       epd2.refresh(partial_update_mode);
-      for (uint16_t x = 0; x < sizeof(_buffer); x++)
+      if (epd2.hasFastPartialUpdate)
       {
-        _old_buffer[x] = _buffer[x];
+        epd2.writeImageAgain(_buffer, 0, 0, WIDTH, _page_height);
       }
-      //if (epd2.hasFastPartialUpdate){ //no more going for compatibility
-      
-      //}
       if (!partial_update_mode) epd2.powerOff();
-      else epd2.partialOut();
     }
 
     // display part of buffer content to screen, useful for full screen buffer
@@ -365,6 +352,7 @@ class GxEPD2_BW : public GxEPD2_GFX_BASE_CLASS
           if (epd2.hasFastPartialUpdate)
           {
             epd2.writeImageAgain(_buffer + offset, _pw_x, _pw_y, _pw_w, _pw_h);
+            //epd2.refresh(_pw_x, _pw_y, _pw_w, _pw_h); // not needed
           }
         }
         else // full update
@@ -589,7 +577,6 @@ class GxEPD2_BW : public GxEPD2_GFX_BASE_CLASS
     }
   private:
     uint8_t _buffer[(GxEPD2_Type::WIDTH / 8) * page_height];
-    /*static RTC_DATA_ATTR*/ uint8_t _old_buffer[(GxEPD2_Type::WIDTH / 8) * page_height]; //tried static bc it needs to be a global variable, but produces errors. RTC_DATA_ATTR because it needs to stay in RAM
     bool _using_partial_mode, _second_phase, _mirror, _reverse;
     uint16_t _width_bytes, _pixel_bytes;
     int16_t _current_page;
