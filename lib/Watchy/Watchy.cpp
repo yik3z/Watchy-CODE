@@ -1361,6 +1361,8 @@ void Watchy::wifiOTA(uint8_t btnPin){
         display.setCursor(40, 60);
         display.println(WiFi.SSID());
         display.setCursor(20, 100);
+        display.println(WiFi.localIP());
+        display.setCursor(20, 130);
         display.println("Upload code now");
         display.setCursor(120, 195);
         display.println("Cancel>"); 

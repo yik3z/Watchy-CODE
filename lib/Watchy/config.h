@@ -72,10 +72,11 @@
 #define SET_MONTH 3
 #define SET_DAY 4
 #define YEAR_OFFSET 1970
-#define NTP_TIME_SYNC_INTERVAL 10080 // once every 7 days. ie 7days * 24h * 60min
-#define GMT_OFFSET_SEC 28800 // set time zone to central standard time
-                                // ie UTC -6 * 60 * 60 = -21600
-#define DAYLIGHT_OFFSET_SEC 0 // if observing Daylight saving time 3600 otherwise 0
+#define NTP_TIME_SYNC_INTERVAL 4320 // once every 3 days. ie 3days * 24h * 60min
+#define GMT_OFFSET_SEC -25200 // set time zone to pacific standard time
+                                // ie UTC -8 * 60 * 60 = -28800
+                                // +3600 because of DST
+#define DAYLIGHT_OFFSET_SEC 0 // if observing Daylight saving time 3600 otherwise 0. DOESN'T WORK
 #define NTP_SERVER "pool.ntp.org"
 //BLE OTA
 #define BLE_DEVICE_NAME "Watchy BLE OTA"
