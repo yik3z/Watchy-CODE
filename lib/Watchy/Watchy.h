@@ -99,6 +99,6 @@ extern RTC_DATA_ATTR bool darkMode;
 extern RTC_DATA_ATTR uint8_t lowBatt;  
 extern RTC_DATA_ATTR bool powerSaver; //will be a user toggleable
 extern RTC_DATA_ATTR bool hourlyTimeUpdate;
-
+//extern RTC_DATA_ATTR uint8_t _buffer[(200/8) * 200];
 
 #endif

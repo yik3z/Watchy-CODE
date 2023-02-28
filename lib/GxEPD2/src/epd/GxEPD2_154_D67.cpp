@@ -361,10 +361,12 @@ void GxEPD2_154_D67::_Init_Part()
 
 void GxEPD2_154_D67::_Update_Full()
 {
+  
   _writeCommand(0x22);
   _writeData(0xf4);
   _writeCommand(0x20);
   _waitWhileBusy("_Update_Full", full_refresh_time);
+  
 }
 
 void GxEPD2_154_D67::_Update_Part()
@@ -372,5 +374,5 @@ void GxEPD2_154_D67::_Update_Part()
   _writeCommand(0x22);
   _writeData(0xfc);
   _writeCommand(0x20);
-  _waitWhileBusy("_Update_Part", partial_refresh_time);
+  _waitWhileBusy("_Update_Part", partial_refresh_time);  
 }

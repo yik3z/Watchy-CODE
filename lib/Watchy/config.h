@@ -1,7 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define DEBUG
+//#define DEBUG
 #define INCLUDE_WEATHER
 
 //pins
@@ -72,10 +72,10 @@
 #define SET_MONTH 3
 #define SET_DAY 4
 #define YEAR_OFFSET 1970
-#define NTP_TIME_SYNC_INTERVAL 10080 // in minutes. Set to once every 7 days. ie 7days * 24h * 60min
-#define GMT_OFFSET_SEC -18000 // set time zone to central standard time
-                                // ie UTC -6 * 60 * 60 = -21600
-#define DAYLIGHT_OFFSET_SEC 0 // if observing Daylight saving time 3600 otherwise 0
+#define NTP_TIME_SYNC_INTERVAL 10080 //mins, once every 7 days. ie 7 days * 24h * 60min
+#define GMT_OFFSET_SEC 28800 //s, set time zone to singapore standard time
+                                // ie UTC 8 * 60 * 60 = 28800
+#define DAYLIGHT_OFFSET_SEC 0 // if observing Daylight saving time 3600 otherwise 0. DOESN'T WORK
 #define NTP_SERVER "pool.ntp.org"
 //BLE OTA
 #define BLE_DEVICE_NAME "Watchy BLE OTA"

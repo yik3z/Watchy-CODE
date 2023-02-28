@@ -174,7 +174,7 @@ class GxEPD2_BW : public GxEPD2_GFX_BASE_CLASS
     void display(bool partial_update_mode = false, bool blackBorder = 0)
     {
       epd2.borderColour = blackBorder;
-      if (partial_update_mode) epd2.writeImage(_buffer, 0, 0, WIDTH, _page_height);
+      if (partial_update_mode) epd2.writeImage(_buffer, 0, 0, WIDTH, _page_height); 
       else epd2.writeImageForFullRefresh(_buffer, 0, 0, WIDTH, _page_height);
       epd2.refresh(partial_update_mode);
       if (epd2.hasFastPartialUpdate)

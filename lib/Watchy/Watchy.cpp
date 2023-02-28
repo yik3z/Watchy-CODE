@@ -19,6 +19,8 @@ RTC_DATA_ATTR bool powerSaver = 0;
 RTC_DATA_ATTR bool hourlyTimeUpdate = 0;
 volatile uint64_t wakeupBit;
 
+uint32_t Freq = 0;
+
 //for stopwatch
 unsigned long endMillis = 0;
 RTC_DATA_ATTR unsigned long finalTimeElapsed = 0;
@@ -53,10 +55,26 @@ Watchy::Watchy(){
 //Main "loop" that is run everytime Watchy is woken from sleep
 void Watchy::init(String datetime){
     wakeup_reason = esp_sleep_get_wakeup_cause(); //get wake up reason
+
     #ifdef DEBUG
     Serial.begin(115200);
     Serial.println("wakeup: " + String(millis()));
     //Serial.println(wakeup_reason);
+
+    //to check CPU freq
+    // Freq = getCpuFrequencyMhz(); //240Hmz
+    // Serial.print("CPU Freq = ");
+    // Serial.print(Freq);
+    // Serial.println(" MHz");
+    // Freq = getXtalFrequencyMhz();
+    // Serial.print("XTAL Freq = ");
+    // Serial.print(Freq);
+    // Serial.println(" MHz");
+    // Freq = getApbFrequency();
+    // Serial.print("APB Freq = ");
+    // Serial.print(Freq);
+    // Serial.println(" Hz");
+
     #endif //DEBUG
 
     Wire.begin(SDA, SCL); //init i2c
@@ -1096,7 +1114,7 @@ void Watchy::setPowerSaver(uint8_t btnPin){
     display.setCursor(35, 30);
     display.println("Power Saver");
     display.setCursor(70, 80);
-    if(btnPin == DOWN_BTN_PIN){    //toggle darkmode if button has been pressed
+    if(btnPin == DOWN_BTN_PIN){    //toggle power saver if button has been pressed
         powerSaver = !powerSaver;
         #ifdef DEBUG
         Serial.print("Power Saver: ");
