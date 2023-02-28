@@ -1,1 +1,0 @@
-{"type": "tool", "name": "tool-openocd-esp32", "version": "2.1000.20210721", "spec": {"owner": "platformio", "id": 8179, "name": "tool-openocd-esp32", "requirements": null, "url": null}}
