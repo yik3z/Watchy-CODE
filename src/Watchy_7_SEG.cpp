@@ -25,7 +25,7 @@ void Watchy7SEG::drawWatchFace(){
     drawDate();
     //drawTemperature();
     drawBatteryBar();
-    drawBleWiFi();
+    //drawBleWiFi();
     syncNtpTime();
     if(lowBatt != 0){
         drawLowBatt();
@@ -112,6 +112,7 @@ void Watchy7SEG::drawBatteryBar(){
     
     display.fillRect(0, 0, batteryBarWidth, BATTERY_BAR_HEIGHT, fgColour);
 }
+/* probably won't be used since we can't keep wifi or BLE on anyway
 void Watchy7SEG::drawBleWiFi(){
     if(BLE_CONFIGURED){ 
         display.drawBitmap(150, 20, bluetoothIcon, 13, 21, fgColour);
@@ -120,6 +121,7 @@ void Watchy7SEG::drawBleWiFi(){
         display.drawBitmap(168, 20, wifiIcon, 26, 18, fgColour);
     }
 }
+*/
 
 
 void Watchy7SEG::drawLowBatt(){

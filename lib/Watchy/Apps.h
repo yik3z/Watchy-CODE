@@ -1,5 +1,8 @@
-//hmmmmmmm
+#ifndef APPS_H
+#define APPS_H
 
+
+/*
 class Stopwatch {
     void startTiming();
     void stopTiming();
@@ -13,3 +16,6 @@ class Darkmode {
 class Battery{
     float getVoltage();
 }
+*/
+
+#endif //APPS_H

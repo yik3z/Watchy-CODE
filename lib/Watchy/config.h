@@ -97,4 +97,18 @@
 #define BTN_DEBOUNCE_INTERVAL 1 //minimum time between buttonpresses (in ms) for it to be counted
 #define BTN_TIMEOUT 2500        //max time to wait for any uncleared button events before ignoring them and going to sleep
 
+//experimental (not yet used)
+enum appState { watchFaceState,
+                menuState,
+                showStatsState,
+                vibMotorState,
+                showAccState,
+                setTimeState,
+                setDarkModeState,
+                setPowerSaverState,
+                showTempState,
+                stopWatchState,
+                syncNtpTimeState,
+                wifiOtaState };
+
 #endif

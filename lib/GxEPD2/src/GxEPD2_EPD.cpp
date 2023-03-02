@@ -96,6 +96,8 @@ void GxEPD2_EPD::_reset()
 
 void GxEPD2_EPD::_waitWhileBusy(const char* comment, uint16_t busy_time)
 {
+  uint32_t freq = getCpuFrequencyMhz();
+  setCpuFrequencyMhz(10); //added
   if (_busy >= 0)
   {
     //Serial.print("delay");
@@ -126,6 +128,7 @@ void GxEPD2_EPD::_waitWhileBusy(const char* comment, uint16_t busy_time)
     (void) start;
   }
   else delay(busy_time);
+  setCpuFrequencyMhz(freq); //added
 }
 
 void GxEPD2_EPD::_writeCommand(uint8_t c)

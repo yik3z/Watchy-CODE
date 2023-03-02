@@ -15,7 +15,7 @@ class Watchy7SEG : public Watchy{
         void drawDate();
         //void drawTemperature();   //temp is messed up idk why. Seems like hardware issue
         void drawBatteryBar();
-        void drawBleWiFi();
+        //void drawBleWiFi();
         void drawLowBatt();
 };
 

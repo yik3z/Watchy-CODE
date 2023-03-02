@@ -5,31 +5,36 @@ GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> Watchy::display(GxEPD2_154_D67
 
 RTC_DATA_ATTR int guiState;
 RTC_DATA_ATTR int menuIndex;
+#ifdef USING_ACCELEROMETER
 RTC_DATA_ATTR BMA423 sensor;
-RTC_DATA_ATTR bool WIFI_ON; //whether WiFi is on
+#endif //USING_ACCELEROMETER
+//RTC_DATA_ATTR bool WIFI_ON; //whether WiFi is on
 RTC_DATA_ATTR bool BLE_CONFIGURED = 0;
 RTC_DATA_ATTR weatherData currentWeather;
 RTC_DATA_ATTR int weatherIntervalCounter = WEATHER_UPDATE_INTERVAL;
 RTC_DATA_ATTR int ntpSyncTimeCounter = 0;
-RTC_DATA_ATTR bool darkMode = 0; //for darkmode. This only affects the watchface atm
-    RTC_DATA_ATTR bool fgColour = GxEPD_BLACK; 
-    RTC_DATA_ATTR bool bgColour = GxEPD_WHITE; 
+RTC_DATA_ATTR bool darkMode = 0; //global darkmode
+RTC_DATA_ATTR bool fgColour = GxEPD_BLACK; 
+RTC_DATA_ATTR bool bgColour = GxEPD_WHITE; 
 RTC_DATA_ATTR uint8_t lowBatt = 0;  //0 = normal, 1 = low, 2 = critical
 RTC_DATA_ATTR bool powerSaver = 0; 
 RTC_DATA_ATTR bool hourlyTimeUpdate = 0;
 volatile uint64_t wakeupBit;
+RTC_DATA_ATTR time_t lastNtpSync = 0;
+RTC_DATA_ATTR bool lastNtpSyncSuccess = false;
+RTC_DATA_ATTR time_t bootTime = 0;
 
 uint32_t Freq = 0;
 
 //for stopwatch
-unsigned long endMillis = 0;
+unsigned long stopWatchEndMillis = 0;
 RTC_DATA_ATTR unsigned long finalTimeElapsed = 0;
 bool stopBtnPressed = false;
 
 volatile unsigned long lastButtonInterrupt;  //si the last button time pressed
 
 
-const char *menuItems[] = {"Check Battery", "Vibrate Motor", "Show Accelerometer", "Set Time","Dark/Light Mode","Power Saver","Show Temperature","Stopwatch","Sync NTP Time","WiFi OTA"};
+const char *menuItems[] = {"Show Stats", "Vibrate Motor", "Show Accelerometer", "Set Time","Dark/Light Mode","Power Saver","Show Temperature","Stopwatch","Sync NTP Time","WiFi OTA"};
 int16_t menuOptions = sizeof(menuItems) / sizeof(menuItems[0]);
 
 String getValue(String data, char separator, int index)
@@ -112,25 +117,6 @@ void Watchy::init(String datetime){
     else{
     switch (wakeup_reason)
     {
-        #ifdef ESP_RTC
-        case ESP_SLEEP_WAKEUP_TIMER: //ESP Internal RTC
-            if(guiState == WATCHFACE_STATE){
-                RTC.read(currentTime);
-                currentTime.Minute++;
-                tmElements_t tm;
-                tm.Month = currentTime.Month;
-                tm.Day = currentTime.Day;
-                tm.Year = currentTime.Year;
-                tm.Hour = currentTime.Hour;
-                tm.Minute = currentTime.Minute;
-                tm.Second = 0;
-                time_t t = makeTime(tm);
-                RTC.set(t);
-                RTC.read(currentTime);           
-                showWatchFace(true); //partial updates on tick
-            }
-            break;        
-        #endif
         case ESP_SLEEP_WAKEUP_EXT0: //RTC Alarm
             RTC.alarm(ALARM_2); //resets the alarm flag in the RTC
             if(guiState == WATCHFACE_STATE){
@@ -173,10 +159,9 @@ void Watchy::init(String datetime){
             }
             break;
         default: //reset
-            #ifndef ESP_RTC
             _rtcConfig(datetime);
-            #endif
-            //_bmaConfig();
+            bootTime = RTC.get();
+            //_bmaConfig(); //crashes watchy
             vibMotor(200, 4);
             showWatchFace(false); //full update on reset
             break;
@@ -188,36 +173,46 @@ void Watchy::init(String datetime){
     deepSleep();
 }
 
-//NTP time sync. Inspired by
-    //etwasmitbaum's Watchy code: https://github.com/etwasmitbaum/Watchy/
-void Watchy::syncNtpTime(){
-    if(ntpSyncTimeCounter >= NTP_TIME_SYNC_INTERVAL){
+
+/*!
+ * @brief NTP time sync. Inspired by etwasmitbaum's Watchy code: https://github.com/etwasmitbaum/Watchy/
+ *
+ * @param[in] usingGui:  Whether this is a scheduled or forced (GUI) sync
+ *
+ * @returns String of SSID connected. If failed, returns blank string ""
+ *  
+ */
+String Watchy::syncNtpTime(bool usingGui){
+    String SSID = "";
+    if((ntpSyncTimeCounter >= NTP_TIME_SYNC_INTERVAL)or(usingGui==true)){   
+        //attempt to sync
+        lastNtpSyncSuccess = false;
         bool connected = initWiFi();
         if(connected) { 
-            WIFI_ON = true;
+            //WIFI_ON = true;
+            SSID = WiFi.SSID();
             struct tm timeinfo;
             //get NTP Time
             configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
             delay(4000); //delay 4 secods so configTime can finish recieving the time from the internet
             getLocalTime(&timeinfo);
             // convert NTP time into proper format
-            tmElements_t tm;
-            tm.Month = timeinfo.tm_mon + 1;// 0-11 based month so we have to add 1
-            tm.Day = timeinfo.tm_mday;
-            tm.Year = timeinfo.tm_year + 1900 - YEAR_OFFSET;//offset from 1970, since year is stored in uint8_t
-            tm.Hour = timeinfo.tm_hour;
-            tm.Minute = timeinfo.tm_min;
-            tm.Second = timeinfo.tm_sec;
-            time_t t = makeTime(tm);
+            currentTime.Month = timeinfo.tm_mon + 1;// 0-11 based month so we have to add 1
+            currentTime.Day = timeinfo.tm_mday;
+            currentTime.Year = timeinfo.tm_year + 1900 - YEAR_OFFSET;//offset from 1970, since year is stored in uint8_t
+            currentTime.Hour = timeinfo.tm_hour;
+            currentTime.Minute = timeinfo.tm_min;
+            currentTime.Second = timeinfo.tm_sec;
+            lastNtpSync = makeTime(currentTime);
+            RTC.set(lastNtpSync);
             ntpSyncTimeCounter = 0;
-            //set the RTC time to the NTP time
-            RTC.set(t);
+            lastNtpSyncSuccess = true;
             #ifdef DEBUG
             Serial.println("Time Synced and set"); //debug
             #endif //DEBUG
-        // shut down the radio to save power
-        WiFi.mode(WIFI_OFF);
-        WIFI_ON = false;
+        
+        WiFi.mode(WIFI_OFF); // shut down the radio to save power
+        //WIFI_ON = false;
         btStop();
         esp_wifi_stop(); 
         }
@@ -229,6 +224,7 @@ void Watchy::syncNtpTime(){
         Serial.println(ntpSyncTimeCounter);
         #endif  //DEBUG
     }
+    return SSID;
 }
 
 /*!
@@ -268,7 +264,6 @@ void Watchy::_rtcConfig(String datetime){
     }
     //https://github.com/JChristensen/DS3232RTC
     RTC.squareWave(SQWAVE_NONE); //disable square wave output
-    //RTC.set(compileTime()); //set RTC time to compile time
     RTC.setAlarm(ALM2_EVERY_MINUTE, 0, 0, 0, 0); //alarm wakes up Watchy every minute
     RTC.alarmInterrupt(ALARM_2, true); //enable alarm interrupt
     RTC.read(currentTime);
@@ -297,13 +292,15 @@ void Watchy::handleButtonPress(){
       switch(menuIndex)
       {
         case 0:
-          showBattery();
+          showStats();
           break;
         case 1:
           showBuzz();
           break;          
         case 2:
+          #ifdef USING_ACCELEROMETER
           //showAccelerometer();
+          #endif //USING_ACCELEROMETER
           break;
         case 3:
           setTime();
@@ -315,7 +312,9 @@ void Watchy::handleButtonPress(){
           setPowerSaver();      
           break;           
         case 6:
+          #ifdef USING_ACCELEROMETER
           //showTemperature();
+          #endif //USING_ACCELEROMETER
           break;
 	    case 7:
 		  stopWatch();
@@ -324,7 +323,7 @@ void Watchy::handleButtonPress(){
 		  connectWiFiGUI();
 		  break;
         case 9:
-          wifiOTA();
+          wifiOta();
           break;
         default:
           break;                              
@@ -338,7 +337,7 @@ void Watchy::handleButtonPress(){
       switch(menuIndex)
       {
         case 0:
-          showBattery(MENU_BTN_PIN);
+          showStats(MENU_BTN_PIN);
           break;
         case 1:
           //showBuzz();
@@ -365,7 +364,7 @@ void Watchy::handleButtonPress(){
 		  //connectWiFiGUI();
 		  break;
         case 9:
-          //wifiOTA();
+          //wifiOta();
           break;
         default:
           break;                              
@@ -412,7 +411,7 @@ void Watchy::handleButtonPress(){
         switch(menuIndex)
         {
         case 0: //battery App
-          //showBattery();
+          //showStats();
           break;
         case 1:
           //showBuzz();
@@ -439,7 +438,7 @@ void Watchy::handleButtonPress(){
 		  //connectWiFiGUI();
 		  break;
         case 9:
-          //wifiOTA();
+          //wifiOta();
           break;
         default:
           break;
@@ -466,7 +465,7 @@ void Watchy::handleButtonPress(){
         switch(menuIndex)
         {
         case 0: //battery App
-          //showBattery();
+          //showStats();
           break;
         case 1:
           //showBuzz();
@@ -493,7 +492,7 @@ void Watchy::handleButtonPress(){
 		  //connectWiFiGUI();
 		  break;
         case 9:
-          //wifiOTA();
+          //wifiOta();
           break;
         default:
           break;
@@ -501,8 +500,6 @@ void Watchy::handleButtonPress(){
     }
   }
 }   //handleButtonPress
-
-
 
 //scrolling menu by Alex Story
 void Watchy::showMenu(byte menuIndex, bool partialRefresh){
@@ -543,40 +540,7 @@ void Watchy::showMenu(byte menuIndex, bool partialRefresh){
     guiState = MAIN_MENU_STATE;    
 }   //showMenu
 
-/***APPS***/
-
-void Watchy::showBattery(uint8_t btnPin){
-    display.setFullWindow();
-    display.fillScreen(bgColour);
-    display.setFont(&FreeMonoBold9pt7b);
-    display.setTextColor(fgColour);
-    display.setCursor(15, 70);
-    display.println("Battery Voltage:");
-    uint32_t mV = getBatteryVoltage();
-    uint8_t percentage = getBatteryPercent(mV);
-    display.setCursor(60, 100);
-    display.print(mV);
-    display.println(" mV");
-    display.setCursor(10, 130);
-    display.println("Battery Percentage:");
-    display.setCursor(70, 150);
-    display.print(percentage);
-    display.println("%");
-    display.display(true, darkMode); //partial refresh (true)
-    guiState = APP_STATE;      
-}
-
-void Watchy::showBuzz(){
-    display.setFullWindow();
-    display.fillScreen(bgColour);
-    display.setFont(&FreeMonoBold9pt7b);
-    display.setTextColor(fgColour);
-    display.setCursor(70, 80);
-    display.println("Buzz!");
-    display.display(false, darkMode); //full refresh
-    vibMotor();
-    showMenu(menuIndex, false);    
-}
+//HELPER FUNCTIONS
 
 /*!
  * @brief Vibrates motor
@@ -596,231 +560,6 @@ void Watchy::vibMotor(uint8_t intervalMs, uint8_t length){
     }
     digitalWrite(VIB_MOTOR_PIN, 0);
 }
-
-void Watchy::setTime(){
-
-    guiState = APP_STATE;
-
-    RTC.read(currentTime);
-
-    int8_t minute = currentTime.Minute;
-    int8_t hour = currentTime.Hour;
-    int8_t day = currentTime.Day;
-    int8_t month = currentTime.Month;
-    int8_t year = currentTime.Year + YEAR_OFFSET - 2000;
-
-    int8_t setIndex = SET_HOUR;
-
-    int8_t blink = 0;
-
-    pinMode(DOWN_BTN_PIN, INPUT);
-    pinMode(UP_BTN_PIN, INPUT);
-    pinMode(MENU_BTN_PIN, INPUT);  
-    pinMode(BACK_BTN_PIN, INPUT);  
-
-    display.setFullWindow();
-
-    while(1){
-
-    if(digitalRead(MENU_BTN_PIN) == 1){
-        setIndex++;
-        if(setIndex > SET_DAY){
-        break;
-        }
-    }
-    if(digitalRead(BACK_BTN_PIN) == 1){
-        if(setIndex != SET_HOUR){
-        setIndex--;
-        }
-    }      
-
-    blink = 1 - blink;
-
-    if(digitalRead(DOWN_BTN_PIN) == 1){
-        blink = 1;
-        switch(setIndex){
-        case SET_HOUR:
-            hour == 23 ? (hour = 0) : hour++;
-            break;
-        case SET_MINUTE:
-            minute == 59 ? (minute = 0) : minute++;
-            break;
-        case SET_YEAR:
-            year == 99 ? (year = 20) : year++;
-            break;
-        case SET_MONTH:
-            month == 12 ? (month = 1) : month++;
-            break;
-        case SET_DAY:
-            day == 31 ? (day = 1) : day++;
-            break;                         
-        default:
-            break;
-        }      
-    }
-
-    if(digitalRead(UP_BTN_PIN) == 1){
-        blink = 1;
-        switch(setIndex){
-        case SET_HOUR:
-            hour == 0 ? (hour = 23) : hour--;
-            break;
-        case SET_MINUTE:
-            minute == 0 ? (minute = 59) : minute--;
-            break;
-        case SET_YEAR:
-            year == 20 ? (year = 99) : year--;
-            break;
-        case SET_MONTH:
-            month == 1 ? (month = 12) : month--;
-            break;
-        case SET_DAY:
-            day == 1 ? (day = 31) : day--;
-            break;          
-        default:
-            break;
-        }   
-    }    
-
-    display.fillScreen(bgColour);
-    display.setTextColor(fgColour);
-    display.setFont(&DSEG7_Classic_Bold_53);
-
-    display.setCursor(5, 80);
-    if(setIndex == SET_HOUR){//blink hour digits
-        display.setTextColor(blink ? fgColour : bgColour);
-    }
-    if(hour < 10){
-        display.print("0");      
-    }
-    display.print(hour);
-
-    display.setTextColor(fgColour);
-    display.print(":");
-
-    display.setCursor(108, 80);
-    if(setIndex == SET_MINUTE){//blink minute digits
-        display.setTextColor(blink ? fgColour : bgColour);
-    }
-    if(minute < 10){
-        display.print("0");      
-    }
-    display.print(minute);
-
-    display.setTextColor(fgColour);
-
-    display.setFont(&FreeMonoBold9pt7b);
-    display.setCursor(45, 150);
-    if(setIndex == SET_YEAR){//blink minute digits
-        display.setTextColor(blink ? fgColour : bgColour);
-    }    
-    display.print(2000+year);
-
-    display.setTextColor(fgColour);
-    display.print("/");
-
-    if(setIndex == SET_MONTH){//blink minute digits
-        display.setTextColor(blink ? fgColour : bgColour);
-    }   
-    if(month < 10){
-        display.print("0");      
-    }     
-    display.print(month);
-
-    display.setTextColor(fgColour);
-    display.print("/");
-
-    if(setIndex == SET_DAY){//blink minute digits
-        display.setTextColor(blink ? fgColour : bgColour);
-    }       
-    if(day < 10){
-        display.print("0");      
-    }     
-    display.print(day); 
-    display.display(true, darkMode); //partial refresh
-    }
-
-    const time_t FUDGE(10);//fudge factor to allow for upload time, etc. (seconds, YMMV)
-    tmElements_t tm;
-    tm.Month = month;
-    tm.Day = day;
-    tm.Year = year + 2000 - YEAR_OFFSET;//offset from 1970, since year is stored in uint8_t
-    tm.Hour = hour;
-    tm.Minute = minute;
-    tm.Second = 0;
-
-    time_t t = makeTime(tm) + FUDGE;
-    RTC.set(t);
-
-    showMenu(menuIndex, false);
-}   //setTime
-
-void Watchy::showAccelerometer(){
-    display.setFullWindow();
-    display.fillScreen(bgColour);
-    display.setFont(&FreeMonoBold9pt7b);
-    display.setTextColor(fgColour);
-
-    Accel acc;
-
-    long previousMillis = 0;
-
-    guiState = APP_STATE;
-
-    pinMode(BACK_BTN_PIN, INPUT);
-
-    while(1){
-
-    unsigned long currentMillis = millis();
-
-    if(digitalRead(BACK_BTN_PIN) == 1){
-        break;
-    }
-
-    if(currentMillis - previousMillis > DISPLAY_REFRESH_INTERVAL){
-        previousMillis = currentMillis;
-        // Get acceleration data
-        bool res = sensor.getAccel(acc);
-        uint8_t direction = sensor.getDirection();
-        display.fillScreen(bgColour);      
-        display.setCursor(0, 30);
-        if(res == false) {
-            display.println("getAccel FAIL");
-        }else{
-        display.print("  X:"); display.println(acc.x);
-        display.print("  Y:"); display.println(acc.y);
-        display.print("  Z:"); display.println(acc.z);
-
-        display.setCursor(30, 130);
-        switch(direction){
-            case DIRECTION_DISP_DOWN:
-                display.println("FACE DOWN");
-                break;
-            case DIRECTION_DISP_UP:
-                display.println("FACE UP");
-                break;
-            case DIRECTION_BOTTOM_EDGE:
-                display.println("BOTTOM EDGE");
-                break;
-            case DIRECTION_TOP_EDGE:
-                display.println("TOP EDGE");
-                break;
-            case DIRECTION_RIGHT_EDGE:
-                display.println("RIGHT EDGE");
-                break;
-            case DIRECTION_LEFT_EDGE:
-                display.println("LEFT EDGE");
-                break;
-            default:
-                display.println("ERROR!!!");
-                break;
-        }   //switch(direction)
-        }
-        display.display(true, darkMode); //partial refresh
-    }   //if(currentMillis - previousMillis > interval)
-    }   //while(1)
-    showMenu(menuIndex, false);
-}   //showAccelerometer
 
 void Watchy::showWatchFace(bool partialRefresh){
     display.setFullWindow();
@@ -842,6 +581,8 @@ void Watchy::drawWatchFace(){
     }  
     display.println(currentTime.Minute);    
 }
+
+#ifdef INCLUDE_WEATHER
 /*!
  * @brief Gets weather data (duh)
  *
@@ -890,6 +631,7 @@ weatherData Watchy::getWeatherData(bool online){
     }    
     return currentWeather;
 }
+#endif //INCLUDE_WEATHER
 
 /*!
  * @brief Calculates battery voltage using the ESP32 calibrated ADC
@@ -948,186 +690,9 @@ uint8_t Watchy::getBatteryPercent(uint32_t vBatt){
     return (uint8_t)percentage;
 } 
 
-//GUI to show temperature
-//temperature taken from BMA423 Accelerometer lol
-void Watchy::showTemperature(uint8_t btnPin){
-    display.setFullWindow();
-    display.fillScreen(bgColour);
-    display.setFont(&FreeMonoBold9pt7b);
-    display.setTextColor(fgColour);
-    display.setCursor(40, 30);
-    display.println("Temperature");
-    float temperature = sensor.readTemperature();
-
-    display.setCursor(70, 80);
-    display.print(temperature);
-    display.println(" C");
-    display.display(true, darkMode); //partialrefresh = true
-
-    guiState = APP_STATE;      
-}
-
-/*! 
- * @brief Stopwatch function. Uses an interrupt (ISRStopwatchEnd()) to trigger the end time correctly.
- * Might be quite power hungry while timing becuase there's no way to sleep while counting millis
- */
-void Watchy::stopWatch(uint8_t btnPin){
-    guiState = APP_STATE;
-    if((btnPin == 0) || (btnPin == UP_BTN_PIN)){    //entering the app for the first time
-        finalTimeElapsed = 0;
-        display.setFullWindow();
-        display.fillScreen(bgColour);
-        display.setFont(&FreeMonoBold9pt7b);
-        display.setTextColor(fgColour);
-        display.setCursor(52, 50);
-        display.println("Stopwatch");
-        display.setCursor(STOPWATCH_TIME_X_0, STOPWATCH_TIME_Y_0);
-        display.print("00:00.000");
-        display.setCursor(130, 195);
-        display.println("Start>");
-        if(btnPin == UP_BTN_PIN){
-            display.setCursor(70, STOPWATCH_TIME_Y_0+20);
-            display.println("Reset!");
-        }
-        display.display(true, darkMode); //partial refresh
-    }  
-    else if(btnPin == DOWN_BTN_PIN){
-        //start stopwatch
-        unsigned long startMillis = millis();
-        unsigned long previousMillis = millis();
-        attachInterrupt(DOWN_BTN_PIN, ISRStopwatchEnd, RISING); //use interrupt to stop stopwatch
-
-        display.setFullWindow();
-        display.fillScreen(bgColour);
-        display.setFont(&FreeMonoBold9pt7b);
-        display.setTextColor(fgColour);
-        display.setCursor(52, 50);
-        display.println("Stopwatch");
-        display.setCursor(STOPWATCH_TIME_X_0, STOPWATCH_TIME_Y_0);
-        display.print("00:00.000");
-        display.setCursor(140, 195);
-        display.println("Stop>");
-
-        #ifdef DEBUG
-        Serial.println("Stopwatch Started");
-        #endif  //DEBUG
-        display.display(true, darkMode);
-
-        while(true){   //stopwatch running  
-            
-            //"stop" ISR has been triggered   
-            if (stopBtnPressed == true){
-                detachInterrupt(DOWN_BTN_PIN);
-                stopBtnPressed = false;
-                break;
-            }
-            //stopwatch update loop
-            if(millis() - previousMillis > STOPWATCH_INTERVAL){
-                previousMillis = millis();
-                //get time
-                unsigned long timeElapsed = previousMillis - startMillis;
-                uint16_t minutes = timeElapsed/60000;
-                uint8_t seconds = (timeElapsed % 60000)/1000;
-                // dsiplay time
-                display.fillScreen(bgColour); 
-                //maybe can remove the next 2 lines if I fill only the time section with black
-                //display.setFont(&FreeMonoBold9pt7b);
-                //display.setTextColor(fgColour);
-                display.setCursor(52, 50);
-                display.println("Stopwatch"); 
-                display.setCursor(STOPWATCH_TIME_X_0, STOPWATCH_TIME_Y_0);
-                if(minutes<10){display.print("0");}
-                display.print(minutes);
-                display.print(":");
-                if(seconds<10){display.print("0");}
-                display.print(seconds);
-                display.print(".xxx");  //no ms readout while counting
-                display.setCursor(140, 195);
-                display.println("Stop>");
-                display.display(true, darkMode); //partial refresh
-                
-            } //stopwatch update loop
-        }   //while true
-     
-        finalTimeElapsed = endMillis - startMillis; //get final time
-        uint16_t minutes = finalTimeElapsed/60000;
-        uint8_t seconds = (finalTimeElapsed % 60000)/1000;   
-        uint16_t ms = finalTimeElapsed % 1000;
-        
-        display.fillScreen(bgColour);
-        //display.setFont(&FreeMonoBold9pt7b);
-        //display.setTextColor(fgColour);  //TESTING
-        display.setCursor(STOPWATCH_TIME_X_0, STOPWATCH_TIME_Y_0);
-        if(minutes<10){display.print("0");}
-        display.print(minutes);
-        display.print(":");
-        if(seconds<10){display.print("0");}
-        display.print(seconds);
-        display.print(".");
-        if(ms<10){display.print("00");}
-        else if(ms<100){display.print("0");}
-        display.println(ms);
-        display.setCursor(130, 21);
-        display.println("Reset>");
-        display.display(true, darkMode); //partial refresh
-    } //down button pressed
-}   //stopWatch
-
 void IRAM_ATTR ISRStopwatchEnd() {
-    endMillis = millis();
+    stopWatchEndMillis = millis();
     stopBtnPressed = true;
-}
-
-void Watchy::setDarkMode(uint8_t btnPin){
-    if(btnPin == DOWN_BTN_PIN){    //toggle darkmode if button has been pressed
-        darkMode = !darkMode;
-        fgColour = darkMode ? GxEPD_WHITE : GxEPD_BLACK; 
-        bgColour = darkMode ? GxEPD_BLACK : GxEPD_WHITE; 
-        #ifdef DEBUG
-        Serial.println(darkMode);   //debug
-        #endif
-    }
-    #ifdef DEBUG
-    Serial.println(btnPin);   //debug
-    #endif
-    display.setFullWindow();
-    display.fillScreen(bgColour);
-    display.setFont(&FreeMonoBold9pt7b);
-    display.setTextColor(fgColour);
-    display.setCursor(35, 30);
-    display.println("Dark Mode");
-    display.setCursor(70, 80);
-    display.println(darkMode ? "On" : "Off");
-    if(btnPin == DOWN_BTN_PIN){
-        display.display(false, darkMode); //full update since darkmode changes the entire display
-    } else{
-        display.display(true, darkMode); //partial update
-    }
-    guiState = APP_STATE;      
-}
-
-void Watchy::setPowerSaver(uint8_t btnPin){
-    display.setFullWindow();
-    display.fillScreen(bgColour);
-    display.setFont(&FreeMonoBold9pt7b);
-    display.setTextColor(fgColour);
-    display.setCursor(35, 30);
-    display.println("Power Saver");
-    display.setCursor(70, 80);
-    if(btnPin == DOWN_BTN_PIN){    //toggle power saver if button has been pressed
-        powerSaver = !powerSaver;
-        #ifdef DEBUG
-        Serial.print("Power Saver: ");
-        Serial.println(powerSaver);  
-        #endif  //DEBUG
-    }
-    #ifdef DEBUG
-    Serial.print("Button Pressed: ");
-    Serial.println(btnPin);  
-    #endif  //DEBUG
-    display.println(powerSaver ? "On" : "Off");
-    display.display(true, darkMode);  //partial update
-    guiState = APP_STATE;    
 }
 
 //TODO: work in progress, crashes watchy
@@ -1243,8 +808,10 @@ bool Watchy::initWiFi() {
   #endif    //DEBUG
   unsigned long startMillis = millis();
   bool res = true;
+  uint32_t freq = getCpuFrequencyMhz(); //slow down CPU to save power while waiting
+  setCpuFrequencyMhz(10);
   while (WiFi.status() != WL_CONNECTED) {   
-    if(millis() - startMillis > WIFI_TIMEOUT){  //TODO: add overflow protection
+    if(millis() - startMillis > WIFI_TIMEOUT){
         res = false;    //WiFi failed to connect
         break;
     }
@@ -1253,165 +820,9 @@ bool Watchy::initWiFi() {
     #endif
     delay(100);
   }
-  
+  setCpuFrequencyMhz(freq);
   return res;
 }
-
-void Watchy::connectWiFiGUI(){
-    //TODO: add in functionality to retry wifi
-    guiState = APP_STATE;  
-    display.setFullWindow();
-    display.fillScreen(bgColour);
-    display.setFont(&FreeMonoBold9pt7b);
-    display.setTextColor(fgColour);
-    display.setCursor(30, 90);
-    display.println("Connecting...");
-    display.display(false, darkMode);
-    display.hibernate();
-    bool connected = initWiFi();
-    display.init(0, false);
-    display.setFullWindow();
-    display.fillScreen(bgColour);
-    //display.setFont(&FreeMonoBold9pt7b);
-    display.setTextColor(fgColour);
-    display.setCursor(30, 30);
-    if(connected){
-        display.println("Connected to");
-        display.setCursor(30, 50);
-        display.println(WiFi.SSID());
-        
-        //update NTP time
-        struct tm timeinfo; //get NTP Time
-        configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
-        delay(4000); //delay 4 secods so configTime can finish recieving the time from the internet
-        getLocalTime(&timeinfo);
-        // convert NTP time into proper format
-        tmElements_t tm;
-        tm.Month = timeinfo.tm_mon + 1;// 0-11 based month so we have to add 1
-        tm.Day = timeinfo.tm_mday;
-        tm.Year = timeinfo.tm_year + 1900 - YEAR_OFFSET;//offset from 1970, since year is stored in uint8_t
-        tm.Hour = timeinfo.tm_hour;
-        tm.Minute = timeinfo.tm_min;
-        tm.Second = timeinfo.tm_sec;
-        time_t t = makeTime(tm);
-        RTC.set(t);
-        ntpSyncTimeCounter = 0;   //disabled so this doesn't count (hur hur) towards the ntp counter
-        display.setCursor(25, 90);
-        display.println("NTP Synced to:");
-        display.setCursor(70, 120);
-        if(tm.Hour < 10){
-            display.print("0");
-        }
-        display.print(tm.Hour);
-        display.print(":");
-        if(tm.Minute < 10){
-            display.print("0");
-        }  
-        display.println(tm.Minute);  
-    }
-    else{
-        display.println("Setup failed &");
-        display.println("timed out!");
-    }
-    display.display(false, darkMode);//full refresh
-    WiFi.mode(WIFI_OFF);
-    esp_wifi_stop();
-    btStop();
-}   //connectWiFiGUI
-
-void Watchy::wifiOTA(uint8_t btnPin){
-    //TODO: add in functionality to retry wifi connection
-    guiState = APP_STATE;  
-    display.setFullWindow();
-    display.fillScreen(bgColour);
-    display.setFont(&FreeMonoBold9pt7b);
-    display.setTextColor(fgColour);
-    display.setCursor(55, 80);
-    display.println("WiFi OTA");
-    display.setCursor(33, 110);
-    display.println("Connecting...");
-    display.display(true, darkMode);//full refresh
-    display.hibernate();    //hibernate to wait for wifi to connect
-    #ifndef DEBUG
-    Serial.begin(115200);   //enable serial if not enabled already
-    #endif
-    bool connected = initWiFi();    //start wifi
-    if(connected){
-        ArduinoOTA
-            .onStart([]() {
-            String type;
-            if (ArduinoOTA.getCommand() == U_FLASH)
-                type = "sketch";
-            else // U_SPIFFS
-                type = "filesystem";
-
-            // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-            Serial.println("Start updating " + type);
-            })
-            .onEnd([]() {
-            Serial.println("\nEnd");
-            })
-            .onProgress([](unsigned int progress, unsigned int total) {
-            Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-            })
-            .onError([](ota_error_t error) {
-            Serial.printf("Error[%u]: ", error);
-            if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
-            else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
-            else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
-            else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-            else if (error == OTA_END_ERROR) Serial.println("End Failed");
-            });
-
-        ArduinoOTA.begin();
-        Serial.println("Ready");
-        Serial.print("IP address: ");
-        Serial.println(WiFi.localIP());
-        Serial.println("Press down button to cancel");
-        attachInterrupt(DOWN_BTN_PIN, ISRStopwatchEnd, RISING); //use the same stopwatch interrupt function to stop OTA
-
-        display.init(0, false); //re-init after hibernating (waiting for wifi)
-        display.setFullWindow();
-        display.fillScreen(bgColour);
-        //display.setTextColor(fgColour);   //TESTING
-        display.setCursor(37, 40);
-        display.println("Connected to");
-        display.setCursor(40, 60);
-        display.println(WiFi.SSID());
-        display.setCursor(20, 100);
-        display.println(WiFi.localIP());
-        display.setCursor(20, 130);
-        display.println("Upload code now");
-        display.setCursor(120, 195);
-        display.println("Cancel>"); 
-        display.display(true, darkMode);
-        display.hibernate();
-        while(true){
-            if (stopBtnPressed == true){
-                detachInterrupt(DOWN_BTN_PIN);
-                stopBtnPressed = false;
-                break;
-            }
-            ArduinoOTA.handle();    //no display updates here because it'll probably break the OTA update. A successful OTA should reboot the ESP
-        } //while(true)
-    } //if(connected)
-    //if we get this far it means the OTA loop was cancelled
-
-    //turn off WiFi
-    WiFi.mode(WIFI_OFF);
-    esp_wifi_stop();
-    btStop();
-
-    //update screen
-    display.init(0, false); //re-init after hibernating
-    display.setFullWindow();
-    display.fillScreen(bgColour);
-    //display.setFont(&FreeMonoBold9pt7b);
-    //display.setTextColor(fgColour);
-    display.setCursor(40, 110);
-    display.println("OTA Aborted");
-    display.display(true, darkMode); //partial refresh
-} //wifiOTA
 
 void Watchy::setISRs(){
     attachInterrupt(MENU_BTN_PIN, ISRMenuBtnPress, RISING);
@@ -1491,147 +902,6 @@ uint16_t Watchy::_writeRegister(uint8_t address, uint8_t reg, uint8_t *data, uin
 
 /***************** UNUSED CODE *****************/
 /*
-void Watchy::fastMenu(){
-  bool timeout = false;
-  long lastTimeout = millis();
-  pinMode(MENU_BTN_PIN, INPUT);
-  pinMode(BACK_BTN_PIN, INPUT);
-  pinMode(UP_BTN_PIN, INPUT);
-  pinMode(DOWN_BTN_PIN, INPUT);
-  while(!timeout){
-      if(millis() - lastTimeout > FAST_MENU_SLEEP_TIMEOUT){
-          timeout = true;
-      }else{
-          if(digitalRead(MENU_BTN_PIN) == 1){
-            lastTimeout = millis();  
-            if(guiState == MAIN_MENU_STATE){//if already in menu, then select menu item
-                switch(menuIndex)
-                {
-                    case 0:
-                    showBattery();
-                    break;
-                    case 1:
-                    showBuzz();
-                    break;          
-                    case 2:
-                    showAccelerometer();
-                    break;
-                    case 3:
-                    setTime();
-                    break;
-                    case 4:
-                    setDarkMode();
-                    break;
-                    case 5:
-                    setPowerSaver();
-                    break;                    
-                    case 6:
-                    showTemperature();
-                    break;
-                    case 7:
-                    stopWatch();
-                    break;
-                    case 8:
-                    connectWiFiGUI();
-                    break;
-                    case 9:
-                    //setupBLE();
-                    break;
-                    default:
-                    break;                              
-                }
-            }
-          }else if(digitalRead(BACK_BTN_PIN) == 1){
-            lastTimeout = millis();
-            if(guiState == MAIN_MENU_STATE){//exit to watch face if already in menu
-            RTC.alarm(ALARM_2); //resets the alarm flag in the RTC
-            RTC.read(currentTime);
-            showWatchFace(false);
-            break; //leave loop
-            }else if(guiState == APP_STATE){
-            showMenu(menuIndex, false);//exit to menu if already in app
-            }            
-          }else if(digitalRead(UP_BTN_PIN) == 1){
-            lastTimeout = millis();
-            if(guiState == MAIN_MENU_STATE){//increment menu index
-            menuIndex--;
-            if(menuIndex < 0){
-                menuIndex = menuOptions - 1;
-            }    
-            showFastMenu(menuIndex);
-            }            
-          }else if(digitalRead(DOWN_BTN_PIN) == 1){
-            lastTimeout = millis();
-            if(guiState == MAIN_MENU_STATE){//decrement menu index
-            menuIndex++;
-            if(menuIndex > menuOptions - 1){
-                menuIndex = 0;
-            }
-            showFastMenu(menuIndex);
-            }         
-          }
-      }
-  } 
-}   //fastMenu()
+//put any unused code here
 
-void Watchy::showFastMenu(byte menuIndex){
-    display.setFullWindow();
-    display.fillScreen(bgColour);
-    display.setFont(&FreeMonoBold9pt7b);
-
-    int16_t  x1, y1;
-    uint16_t w, h;
-    int16_t yPos;
-	int16_t startPos=0;
-	if(menuIndex+MENU_LENGTH>menuOptions)
-	{
-		
-			startPos=(menuOptions-1)-(MENU_LENGTH-1);
-		
-	}
-	else
-		{
-			startPos=menuIndex;
-		}
-    //const char *menuItems[] = {"Check Battery", "Vibrate Motor", "Show Accelerometer", "Set Time", "Setup WiFi", "Update Firmware","Test"};
-    for(int i=startPos; i<MENU_LENGTH+startPos; i++){
-    yPos = 30+(MENU_HEIGHT*(i-startPos));
-    display.setCursor(0, yPos);
-    if(i == menuIndex){
-        display.getTextBounds(menuItems[i], 0, yPos, &x1, &y1, &w, &h);
-        display.fillRect(x1-1, y1-10, 200, h+15, fgColour);
-        display.setTextColor(bgColour);
-        display.println(menuItems[i]);      
-    }else{
-        display.setTextColor(fgColour);
-        display.println(menuItems[i]);
-    }   
-    }
-
-    display.display(true, darkMode);
-
-    guiState = MAIN_MENU_STATE;    
-}   //showFastMenu
-
-// time_t compileTime()
-// {   
-//     const time_t FUDGE(10);    //fudge factor to allow for upload time, etc. (seconds, YMMV)
-//     const char *compDate = __DATE__, *compTime = __TIME__, *months = "JanFebMarAprMayJunJulAugSepOctNovDec";
-//     char compMon[3], *m;
-
-//     strncpy(compMon, compDate, 3);
-//     compMon[3] = '\0';
-//     m = strstr(months, compMon);
-
-//     tmElements_t tm;
-//     tm.Month = ((m - months) / 3 + 1);
-//     tm.Day = atoi(compDate + 4);
-//     tm.Year = atoi(compDate + 7) - YEAR_OFFSET; // offset from 1970, since year is stored in uint8_t
-//     tm.Hour = atoi(compTime);
-//     tm.Minute = atoi(compTime + 3);
-//     tm.Second = atoi(compTime + 6);
-
-//     time_t t = makeTime(tm);
-//     return t + FUDGE;        //add fudge factor to allow for compile time
-// }
 */

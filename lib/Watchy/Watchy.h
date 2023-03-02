@@ -20,6 +20,8 @@
 #include <ESPmDNS.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
+//#include "Apps.h"     //not ready
+//#include "Weather.h"  //not ready
 
 #ifdef INCLUDE_WEATHER
 #include "Weather.h"
@@ -41,37 +43,38 @@ class Watchy {
     public:
         Watchy();
         void init(String datetime = "");
+        void handleButtonPress();
+        void setISRs();
         void deepSleep();
+
+        //helper functions
         uint32_t getBatteryVoltage();
         uint8_t getBatteryPercent(uint32_t vBatt);
         void vibMotor(uint8_t intervalMs = 100, uint8_t length = 20);
-
-        void handleButtonPress();
-        void showMenu(byte menuIndex, bool partialRefresh);
-        void showBattery(uint8_t btnPin = 0);
-        void showBuzz();
-        void showAccelerometer();
-        void setTime();
         bool initWiFi();
-        void connectWiFiGUI();
-        void wifiOTA(uint8_t btnPin = 0);
-        //void setupBLE();  //not yet created...or maybe a separate file for that
+        String syncNtpTime(bool usingGui = false);
 
+        void showMenu(byte menuIndex, bool partialRefresh);
+        virtual void drawWatchFace(); //override this method for different watch faces
+        void showWatchFace(bool partialRefresh);
+
+        //apps
+        void showStats(uint8_t btnPin = 0);
+        void showBuzz();
+        void connectWiFiGUI();
+        void stopWatch(uint8_t btnPin = 0);
+        void setDarkMode(uint8_t btnPin = 0);
+        void setPowerSaver(uint8_t btnPin = 0);
+        void setTime();
+        void wifiOta(uint8_t btnPin = 0);
+        //void setupBLE();  //not yet created...or maybe a separate file for that
+        #ifdef USING_ACCELEROMETER
+        void showAccelerometer();
+        void showTemperature(uint8_t btnPin = 0);
+        #endif //USING_ACCELEROMETER
         #ifdef INCLUDE_WEATHER
         weatherData getWeatherData(bool online = true); //added "online" argument to allow for forced RTC temp measurement
         #endif //INCLULDE_WEATHER
-
-        void stopWatch(uint8_t btnPin = 0);
-        void showTemperature(uint8_t btnPin = 0);
-        void setDarkMode(uint8_t btnPin = 0);
-        void setPowerSaver(uint8_t btnPin = 0);
-        void syncNtpTime();
-        void showWatchFace(bool partialRefresh);
-        virtual void drawWatchFace(); //override this method for different watch faces
-
-        void setISRs();
-
-        
 
     private:
         void _rtcConfig(String datetime);    
@@ -87,18 +90,33 @@ void IRAM_ATTR ISRBackBtnPress();
 void IRAM_ATTR ISRUpBtnPress();
 void IRAM_ATTR ISRDownBtnPress();
 
-/* Data that needs to be preserved over sleep */
+/* Data that needs to be preserved over sleep
+Note: You can't put an RTC_DATA_ATTR qualified variable inside a class 
+because the class is stored in normal RAM. 
+The RTC_DATA_ATTR qualified variable is, by definition, stored in RTC RAM. */
 extern RTC_DATA_ATTR int guiState;
 extern RTC_DATA_ATTR int menuIndex;
-extern RTC_DATA_ATTR BMA423 sensor;
-extern RTC_DATA_ATTR bool WIFI_ON;  
+//extern RTC_DATA_ATTR bool WIFI_ON;  
 extern RTC_DATA_ATTR bool BLE_CONFIGURED;
 extern RTC_DATA_ATTR bool darkMode;    
-    extern RTC_DATA_ATTR bool fgColour; 
-    extern RTC_DATA_ATTR bool bgColour;
+extern RTC_DATA_ATTR bool fgColour; 
+extern RTC_DATA_ATTR bool bgColour;
 extern RTC_DATA_ATTR uint8_t lowBatt;  
 extern RTC_DATA_ATTR bool powerSaver; //will be a user toggleable
 extern RTC_DATA_ATTR bool hourlyTimeUpdate;
+extern RTC_DATA_ATTR time_t lastNtpSync;
+extern RTC_DATA_ATTR bool lastNtpSyncSuccess;
+extern RTC_DATA_ATTR time_t bootTime;
+#ifdef USING_ACCELEROMETER
+extern RTC_DATA_ATTR BMA423 sensor;
+#endif //USING_ACCELEROMETER
+//for stopwatch
+extern RTC_DATA_ATTR unsigned long finalTimeElapsed;
+extern bool stopBtnPressed;
+extern unsigned long stopWatchEndMillis;
+
+
+
 //extern RTC_DATA_ATTR uint8_t _buffer[(200/8) * 200];
 
 #endif
