@@ -94,6 +94,8 @@ void Watchy::stopWatch(uint8_t btnPin){
                 display.print(".xxx");  //no ms readout while counting
                 display.setCursor(140, 195);
                 display.println("Stop>");
+                display.setCursor(5,20);
+                display.println("<Exit");
                 display.display(true, darkMode); //partial refresh
                 
             } //stopwatch update loop
@@ -119,6 +121,8 @@ void Watchy::stopWatch(uint8_t btnPin){
         display.println(ms);
         display.setCursor(130, 21);
         display.println("Reset>");
+        display.setCursor(5,20);
+        display.println("<Exit");
         display.display(true, darkMode); //partial refresh
     } //down button pressed
 }   //stopWatch
@@ -153,7 +157,7 @@ void Watchy::showStats(uint8_t btnPin){
     display.print("h");
     display.print(uptime_elements.Minute);
     display.print("m");
-    display.setCursor(10, 85);
+    display.setCursor(0, 85);
     display.print("NTP:");
     //print last NTP sync time
     tmElements_t lastNtpSync_elements;
@@ -238,8 +242,8 @@ void Watchy::connectWiFiGUI(){
         display.println("Setup failed &");
         display.setCursor(30, 30);
         display.println("timed out!");
-        display.setCursor(5, 5);
-        display.println("<Back");
+        display.setCursor(5, 20);
+        display.println("<Exit");
 
     }
     display.display(false, darkMode);//full refresh
@@ -342,8 +346,8 @@ void Watchy::wifiOta(uint8_t btnPin){
     //display.setTextColor(fgColour);
     display.setCursor(40, 110);
     display.println("OTA Aborted");
-    display.setCursor(5, 5);
-    display.println("<Back");
+    display.setCursor(5,20);
+    display.println("<Exit");
     display.display(true, darkMode); //partial refresh
 } //wifiOta
 

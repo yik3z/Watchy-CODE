@@ -808,8 +808,6 @@ bool Watchy::initWiFi() {
   #endif    //DEBUG
   unsigned long startMillis = millis();
   bool res = true;
-  uint32_t freq = getCpuFrequencyMhz(); //slow down CPU to save power while waiting
-  setCpuFrequencyMhz(10);
   while (WiFi.status() != WL_CONNECTED) {   
     if(millis() - startMillis > WIFI_TIMEOUT){
         res = false;    //WiFi failed to connect
@@ -818,9 +816,12 @@ bool Watchy::initWiFi() {
     #ifdef DEBUG
     Serial.println(WiFi.status());
     #endif
+    //slow down CPU to save power while waiting. DISABLED BECAUSE WIFI FAILS TO CONNECT
+    //uint32_t freq = getCpuFrequencyMhz(); 
+    //setCpuFrequencyMhz(10);
     delay(100);
+    //setCpuFrequencyMhz(freq);
   }
-  setCpuFrequencyMhz(freq);
   return res;
 }
 
