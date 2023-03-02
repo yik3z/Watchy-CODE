@@ -162,15 +162,6 @@ void Watchy::showStats(uint8_t btnPin){
     //print last NTP sync time
     tmElements_t lastNtpSync_elements;
     breakTime(lastNtpSync, lastNtpSync_elements);
-    if(lastNtpSync_elements.Day < 10){
-        display.print("0");
-    }
-    display.print(lastNtpSync_elements.Day);
-    if(lastNtpSync_elements.Month < 10){
-        display.print("0");
-    } 
-    display.println(lastNtpSync_elements.Month);  
-    display.print(" ");
     if(lastNtpSync_elements.Hour < 10){
         display.print("0");
     }
@@ -179,7 +170,16 @@ void Watchy::showStats(uint8_t btnPin){
         display.print("0");
     }  
     display.print(lastNtpSync_elements.Minute); 
-    display.print("h;");
+    display.print("h");
+    if(lastNtpSync_elements.Day < 10){
+        display.print("0");
+    }
+    display.print(lastNtpSync_elements.Day);
+    if(lastNtpSync_elements.Month < 10){
+        display.print("0");
+    } 
+    display.println(lastNtpSync_elements.Month);  
+    display.print(";");
     display.println(lastNtpSyncSuccess ? "s" : "f");
     display.setCursor(12, 100);
     display.println("Pwr Saver:");

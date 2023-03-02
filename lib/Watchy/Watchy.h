@@ -12,7 +12,6 @@
 #include "BLE.h"
 #include <esp_wifi.h>
 #include "driver/adc.h"
-#include "bma.h"
 #include "esp_adc_cal.h"
 #include "config.h" 
 #include "sensitive_config.h"
@@ -20,6 +19,9 @@
 #include <ESPmDNS.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
+#ifdef USING_ACCELEROMETER
+#include "bma.h"
+#endif //USING_ACCELEROMETER
 //#include "Apps.h"     //not ready
 //#include "Weather.h"  //not ready
 
