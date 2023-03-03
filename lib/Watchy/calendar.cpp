@@ -58,10 +58,11 @@ bool fetchCalendar(){
 
   int count = 0;
   int line = 0; //number of lines in the calendar (to be computed)
-  #ifdef DEBUG
-  Serial.println("IndexFrom");  
-  #endif
   indexFrom = payload.lastIndexOf("\n") + 1;
+
+  #ifdef DEBUG
+  Serial.println("Calendar entries:");
+  #endif
 
   // Fill calendarEntries with entries from the get-request
   while (indexTo>=0 && line<CALENDAR_ENTRY_COUNT) {
@@ -74,15 +75,25 @@ bool fetchCalendar(){
       
       indexFrom = indexTo + 1;
       
-      Serial.println(strBuffer);
+      //Serial.println(strBuffer);
 
       if(count == 1) {
         // Set entry time
-        calEnt[line].calDate = strBuffer.substring(4,17); //Exclude end date and time to avoid clutter - Format is "Wed Feb 10 2020 10:00"
-        calEnt[line].calDate = strBuffer.substring(16,5);
+        calEnt[line].calTime = strBuffer.substring(16,5); //TODO: Bug. Somehow selects 5,10
+        calEnt[line].calDate = strBuffer.substring(4,11); //Exclude end date and time to avoid clutter - Original format is "Sat Mar 04 2023 07:30:00 GMT+0800"
+        
+        #ifdef DEBUG
+        Serial.print(calEnt[line].calDate);
+        Serial.print(", ");
+        Serial.print(calEnt[line].calTime);
+        Serial.print(", ");
+        #endif
       } else if(count == 2) {
         // Set entry title
         calEnt[line].calTitle = strBuffer;
+        #ifdef DEBUG
+        Serial.println(calEnt[line].calTitle);
+        #endif
 
       } else {
           count = 0;
@@ -91,6 +102,10 @@ bool fetchCalendar(){
     }
   }
   calendarLength = line;
+  #ifdef DEBUG
+  Serial.print("calendar length: ");
+  Serial.println(calendarLength);
+  #endif
   return lastCalendarSyncSuccess;
 }
 

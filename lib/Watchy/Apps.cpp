@@ -239,7 +239,11 @@ void Watchy::showCalendar(){
       // Print event title
       display.setCursor(x, y+30);
       display.print(calEnt[i].calTitle);
-
+      #ifdef DEBUG
+      Serial.println(calEnt[i].calDate);
+      display.println(calEnt[i].calTime);
+      display.println(calEnt[i].calTitle);
+      #endif
       // Prepare y-position for next event entry
       y = y + 45;
     }

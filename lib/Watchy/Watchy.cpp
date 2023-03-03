@@ -189,8 +189,8 @@ String Watchy::syncInternetStuff(){
     fetchCalendar();
     //getWeatherData(true); //works alone
     #ifdef DEBUG
-    Serial.print("Internet connectivity test: ");
-    Serial.println(internetWorks());
+    //Serial.print("Internet connectivity test: ");
+    //Serial.println(internetWorks());
     #endif
     
     internetSyncCounter = 0;  //reset the counter
