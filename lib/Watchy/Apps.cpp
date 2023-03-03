@@ -14,7 +14,7 @@ extern RTC_DATA_ATTR time_t lastNtpSync;
 extern RTC_DATA_ATTR bool powerSaver;
 
 //for calendar
-extern RTC_DATA_ATTR struct calendarEntries calEnt[CALENDAR_ENTRY_COUNT];
+RTC_DATA_ATTR calendarEntries calEnt[CALENDAR_ENTRY_COUNT];
 
 /*!
  * @brief Displays a GUI and buzzes the motor for a few seconds
@@ -290,6 +290,16 @@ void Watchy::connectWiFiGUI(){
         if(lastCalendarSyncSuccess){
             display.setCursor(20, 140);
             display.println("Calendar Synced");
+            #ifdef DEBUG
+            Serial.print("Calendar (connectWifiGUI): ");
+            for (int i=0; i<2;i++) {
+                Serial.print(calEnt[i].calDate);
+                Serial.print(calEnt[i].calTime);
+                Serial.print(calEnt[i].calTitle);
+            }
+            Serial.println();
+            #endif
+
         }
     }else{
         display.setCursor(30, 30);

@@ -35,6 +35,13 @@ typedef struct weatherData{
 }weatherData;
 #endif
 
+struct calendarEntries
+{
+  String calDate;
+  String calTime;
+  String calTitle;
+};
+
 class Watchy {
     public:
         static DS3232RTC RTC;

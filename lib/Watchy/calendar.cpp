@@ -1,10 +1,9 @@
 #include "calendar.h"
 
 
-
 //calendar
 RTC_DATA_ATTR int calendarLength = 0; //actual number of entries in the ESP's records
-RTC_DATA_ATTR struct calendarEntries calEnt[CALENDAR_ENTRY_COUNT];
+extern RTC_DATA_ATTR calendarEntries calEnt[CALENDAR_ENTRY_COUNT];
 RTC_DATA_ATTR bool lastCalendarSyncSuccess = false;
 
 //String calendarRequest = "https://script.google.com/macros/s/" + String(GOOGLE_CALENDAR_KEY) + "/exec"; //check if this is ok
@@ -72,15 +71,22 @@ bool fetchCalendar(){
 
     if(indexTo != -1) { 
       strBuffer = payload.substring(indexFrom, cutTo);
-      
+      #ifdef DEBUG
+      //Serial.print(strBuffer);
+      //Serial.print(" | Calendar Data: ");
+      #endif      
       indexFrom = indexTo + 1;
       
       //Serial.println(strBuffer);
 
       if(count == 1) {
-        // Set entry time
-        calEnt[line].calTime = strBuffer.substring(16,5); //TODO: Bug. Somehow selects 5,10
-        calEnt[line].calDate = strBuffer.substring(4,11); //Exclude end date and time to avoid clutter - Original format is "Sat Mar 04 2023 07:30:00 GMT+0800"
+        // Set entry time and date
+        //Exclude end date and time to avoid clutter
+        //Original format is "Sat Mar 04 2023 07:30:00 GMT+0800"
+        //also, .substring() method does not follow official C++ std::string.substring()
+        calEnt[line].calDate = strBuffer.substring(4,15); 
+        calEnt[line].calTime = strBuffer.substring(16,21);
+        
         
         #ifdef DEBUG
         Serial.print(calEnt[line].calDate);

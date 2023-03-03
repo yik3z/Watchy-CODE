@@ -1,5 +1,7 @@
 #include "Watchy.h"
 
+//TODO: change display code back to max cpu speed, because it slows things
+
 DS3232RTC Watchy::RTC(false); 
 GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> Watchy::display(GxEPD2_154_D67(CS, DC, RESET, BUSY));
 
@@ -27,6 +29,7 @@ RTC_DATA_ATTR time_t bootTime = 0;
 //extern const int calEntryCount;        
 extern RTC_DATA_ATTR int calendarLength;
 extern RTC_DATA_ATTR bool lastCalendarSyncSuccess;
+extern RTC_DATA_ATTR calendarEntries calEnt[CALENDAR_ENTRY_COUNT];
 //stopwatch
 //for stopwatch (used by ISRs)
 extern bool stopBtnPressed;
@@ -187,6 +190,15 @@ String Watchy::syncInternetStuff(){
     SSID = WiFi.SSID();
     //syncNtpTime();
     fetchCalendar();
+      #ifdef DEBUG
+      Serial.print("Calendar (syncInternetStuff): ");
+      for (int i=0; i<2;i++) {
+          Serial.print(calEnt[i].calDate);
+          Serial.print(calEnt[i].calTime);
+          Serial.print(calEnt[i].calTitle);
+      }
+      Serial.println();
+      #endif
     //getWeatherData(true); //works alone
     #ifdef DEBUG
     //Serial.print("Internet connectivity test: ");
