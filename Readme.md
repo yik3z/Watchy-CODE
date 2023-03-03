@@ -21,7 +21,7 @@
 - Removed floating point operations: Look up table (LUT) implemented to convert battery voltage to percentage
 - Removed `display.init()` before each function. Is now called upon wake from sleep and `display.hibernate()` just before going to sleep.
 - Added interrupts to check for buttonpresses. `handleButtonPress()` loops until all button presses are cleared
-- modified bootloader for faster wake from sleep (See [this guide](https://hackaday.io/project/174898-esp-now-weather-station/log/183782-bootloader-wake-time-improvements)).
+- modified bootloader for faster wake from sleep (See [this guide](https://hackaday.io/project/174898-esp-now-weather-station/log/183782-bootloader-wake-time-improvements)). Copy `bootloader_dio_80m.bin` to `\packages_dir\framework-arduinoespressif32\tools\sdk\bin` (and maybe make a backup of the original).
   settings changed:
   *general*
    - flash speed=80MHz  

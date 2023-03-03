@@ -1,3 +1,4 @@
-Watchface files are placed here. Still named `Watchy_7_SEG` but it's actually custom
+Watchface files are placed here. `Watchface_DIN` is the only watchface in use at the moment.
 
 `/lib` contains all the Watchy core source files
+
