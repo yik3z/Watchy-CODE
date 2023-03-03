@@ -186,57 +186,11 @@ String Watchy::syncInternetStuff(){
   if(connected) { 
     SSID = WiFi.SSID();
     //syncNtpTime();
-    //fetchCalendar();
-
-    // Just putting fetch calendar here:
-    //lastCalendarSyncSuccess = false;
-    #ifdef DEBUG
-    Serial.print("Getting calendar from: ");
-    Serial.println(GOOGLE_CALENDAR_KEY);
-    #endif
-    if(WiFi.status() != WL_CONNECTED){  //check that WiFi is connected
-      #ifdef DEBUG
-      Serial.print("E: WiFi not connected");
-      #endif
-      //return lastCalendarSyncSuccess;
-    }
-    HTTPClient https;
-    Serial.print("[HTTP] begin...\n");
-    https.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
-    if (!https.begin(GOOGLE_CALENDAR_KEY)) {
-      #ifdef DEBUG
-      Serial.println("Cannot connect to google script");
-      #endif
-      //return lastCalendarSyncSuccess;
-    } 
-    #ifdef DEBUG
-    Serial.println("Connected to google script");
-    #endif
-    https.setTimeout(30000);  //30s
-    int httpResponseCode = https.GET();
-    #ifdef DEBUG
-    Serial.print("Response Code: "); Serial.println(httpResponseCode);
-    #endif
-    if(httpResponseCode>0){
-      String payload = https.getString();
-      //lastCalendarSyncSuccess = true;
-      #ifdef DEBUG
-      Serial.print("Calendar payload: "); Serial.println(payload);
-      #endif
-    } else {
-      //https.end();
-      #ifdef DEBUG
-      Serial.println("google scripts http error");
-      #endif
-      //return lastCalendarSyncSuccess;
-    }
-    https.end();
-
-    //End of copied
+    fetchCalendar();
     //getWeatherData(true); //works alone
     #ifdef DEBUG
-    //Serial.print("Internet connectivity test: ");
-    //Serial.println(internetWorks());
+    Serial.print("Internet connectivity test: ");
+    Serial.println(internetWorks());
     #endif
     
     internetSyncCounter = 0;  //reset the counter

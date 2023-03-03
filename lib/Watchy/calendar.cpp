@@ -11,10 +11,10 @@ RTC_DATA_ATTR bool lastCalendarSyncSuccess = false;
 bool fetchCalendar(){
   // Getting calendar from your published google script
   lastCalendarSyncSuccess = false;
-  #ifdef DEBUG
-  Serial.print("Getting calendar from: ");
-  Serial.println(GOOGLE_CALENDAR_KEY);
-  #endif
+  //#ifdef DEBUG
+  //Serial.print("Getting calendar from: ");
+  //Serial.println(GOOGLE_CALENDAR_KEY);
+  //#endif
   if(WiFi.status() != WL_CONNECTED){  //check that WiFi is connected
     #ifdef DEBUG
     Serial.print("E: WiFi not connected");
@@ -33,6 +33,7 @@ bool fetchCalendar(){
   #ifdef DEBUG
   Serial.println("Connected to google script");
   #endif
+  http.setTimeout(30000);  //30s
   int httpResponseCode = http.GET();
   #ifdef DEBUG
   Serial.print("Response Code: "); Serial.println(httpResponseCode);
