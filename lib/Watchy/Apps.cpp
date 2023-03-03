@@ -1,6 +1,20 @@
 //GUI apps for watchy are here for readability
 
 #include "Watchy.h"
+#include "Apps.h"
+
+//for stopwatch
+unsigned long stopWatchEndMillis = 0;
+RTC_DATA_ATTR unsigned long finalTimeElapsed = 0;
+bool stopBtnPressed = false;
+
+//for status
+extern RTC_DATA_ATTR time_t bootTime;
+extern RTC_DATA_ATTR time_t lastNtpSync;
+extern RTC_DATA_ATTR bool powerSaver;
+
+//for calendar
+extern RTC_DATA_ATTR struct calendarEntries calEnt[CALENDAR_ENTRY_COUNT];
 
 /*!
  * @brief Displays a GUI and buzzes the motor for a few seconds
@@ -31,12 +45,14 @@ void Watchy::stopWatch(uint8_t btnPin){
         display.setTextColor(fgColour);
         display.setCursor(52, 50);
         display.println("Stopwatch");
-        display.setCursor(STOPWATCH_TIME_X_0, STOPWATCH_TIME_Y_0);
+        display.setCursor(52, 100);
         display.print("00:00.000");
         display.setCursor(130, 195);
         display.println("Start>");
+        display.setCursor(5,20);
+        display.println("<Exit");
         if(btnPin == UP_BTN_PIN){
-            display.setCursor(70, STOPWATCH_TIME_Y_0+20);
+            display.setCursor(70, 120);
             display.println("Reset!");
         }
         display.display(true, darkMode); //partial refresh
@@ -53,7 +69,7 @@ void Watchy::stopWatch(uint8_t btnPin){
         display.setTextColor(fgColour);
         display.setCursor(52, 50);
         display.println("Stopwatch");
-        display.setCursor(STOPWATCH_TIME_X_0, STOPWATCH_TIME_Y_0);
+        display.setCursor(52, 100);
         display.print("00:00.000");
         display.setCursor(140, 195);
         display.println("Stop>");
@@ -85,7 +101,7 @@ void Watchy::stopWatch(uint8_t btnPin){
                 //display.setTextColor(fgColour);
                 display.setCursor(52, 50);
                 display.println("Stopwatch"); 
-                display.setCursor(STOPWATCH_TIME_X_0, STOPWATCH_TIME_Y_0);
+                display.setCursor(52, 100);
                 if(minutes<10){display.print("0");}
                 display.print(minutes);
                 display.print(":");
@@ -109,7 +125,7 @@ void Watchy::stopWatch(uint8_t btnPin){
         display.fillScreen(bgColour);
         //display.setFont(&FreeMonoBold9pt7b);
         //display.setTextColor(fgColour);  //TESTING
-        display.setCursor(STOPWATCH_TIME_X_0, STOPWATCH_TIME_Y_0);
+        display.setCursor(52, 100);
         if(minutes<10){display.print("0");}
         display.print(minutes);
         display.print(":");
@@ -157,7 +173,7 @@ void Watchy::showStats(uint8_t btnPin){
     display.print("h");
     display.print(uptime_elements.Minute);
     display.print("m");
-    display.setCursor(0, 85);
+    display.setCursor(5, 85);
     display.print("NTP:");
     //print last NTP sync time
     tmElements_t lastNtpSync_elements;
@@ -178,7 +194,7 @@ void Watchy::showStats(uint8_t btnPin){
     if(lastNtpSync_elements.Month < 10){
         display.print("0");
     } 
-    display.println(lastNtpSync_elements.Month);  
+    display.print(lastNtpSync_elements.Month);  
     display.print(";");
     display.println(lastNtpSyncSuccess ? "s" : "f");
     display.setCursor(12, 100);
@@ -203,6 +219,33 @@ void Watchy::showStats(uint8_t btnPin){
     guiState = APP_STATE;      
 }
 
+void Watchy::showCalendar(){
+    display.setFullWindow();
+    display.fillScreen(bgColour);
+    display.setFont(&FreeMonoBold9pt7b);
+    display.setTextColor(fgColour);
+
+    // Set position for the first calendar entry
+    int x = 5;
+    int y = 20;
+    // Print calendar entries from first [0] to the last fetched [line-1] - in case there is fewer events than the maximum allowed
+    for(int i=0;  i < 2 /*calendarLength*/; i++) {  //prints only 2 events for space for now
+
+      // Print event time
+      display.setCursor(x, y);
+      display.print(calEnt[i].calDate);
+      display.setCursor(x, y+15);
+      display.print(calEnt[i].calTime);
+      // Print event title
+      display.setCursor(x, y+30);
+      display.print(calEnt[i].calTitle);
+
+      // Prepare y-position for next event entry
+      y = y + 45;
+    }
+    display.display(true, darkMode); //partial refresh (true)
+  }
+
 void Watchy::connectWiFiGUI(){
     //TODO: add in functionality to retry wifi
     guiState = APP_STATE;  
@@ -214,16 +257,18 @@ void Watchy::connectWiFiGUI(){
     display.println("Connecting...");
     display.display(false, darkMode);
     display.hibernate();
-    String SSID = syncNtpTime(true);    //perform NTP syncing
+    String SSID = syncInternetStuff();    //perform NTP syncing
     display.init(0, false);
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setTextColor(fgColour);
-    if(lastNtpSyncSuccess){
+    if(SSID!=""){
         display.setCursor(30, 30);
         display.println("Connected to");
         display.setCursor(30, 50);
         display.println(SSID);
+    }
+    if(lastNtpSyncSuccess){
         display.setCursor(25, 90);
         display.println("NTP Synced to:");
         display.setCursor(70, 120);
@@ -237,11 +282,15 @@ void Watchy::connectWiFiGUI(){
         }  
         display.println(currentTime.Minute);  
     }
+    if(lastCalendarSyncSuccess){
+        display.setCursor(20, 140);
+        display.println("Calendar Synced");
+    }
     else{
         display.setCursor(30, 30);
-        display.println("Setup failed &");
-        display.setCursor(30, 30);
-        display.println("timed out!");
+        display.println("Sync failed");
+        display.setCursor(30, 50);
+        display.println("& timed out!");
         display.setCursor(5, 20);
         display.println("<Exit");
 
@@ -410,6 +459,7 @@ void Watchy::setDarkMode(uint8_t btnPin){
     guiState = APP_STATE;      
 }
 
+//  GUI to allow the user to manually set the date and time
 void Watchy::setTime(){
 
     guiState = APP_STATE;
@@ -497,9 +547,9 @@ void Watchy::setTime(){
 
     display.fillScreen(bgColour);
     display.setTextColor(fgColour);
-    display.setFont(&DSEG7_Classic_Bold_53);
+    display.setFont(&FreeMonoBold9pt7b);
 
-    display.setCursor(5, 80);
+    display.setCursor(72, 80);
     if(setIndex == SET_HOUR){//blink hour digits
         display.setTextColor(blink ? fgColour : bgColour);
     }
@@ -511,7 +561,7 @@ void Watchy::setTime(){
     display.setTextColor(fgColour);
     display.print(":");
 
-    display.setCursor(108, 80);
+    display.setCursor(104, 80);
     if(setIndex == SET_MINUTE){//blink minute digits
         display.setTextColor(blink ? fgColour : bgColour);
     }

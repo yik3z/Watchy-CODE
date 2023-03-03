@@ -1,7 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-//#define DEBUG
+#define DEBUG
 #define INCLUDE_WEATHER
 
 //pins
@@ -38,8 +38,8 @@
 #define WEATHER_UPDATE_INTERVAL 30 //minutes
 
 //wifi
-#define WIFI_AP_TIMEOUT 60
-#define WIFI_AP_SSID "Watchy AP"  //used for WiFiManager AP
+//#define WIFI_AP_TIMEOUT 60
+//#define WIFI_AP_SSID "Watchy AP"  //used for WiFiManager AP
 #define WIFI_TIMEOUT 10000 //ms
 //WIFI_SSID and WIFI_PASSWORD defined in sensitive_config.h
 
@@ -50,10 +50,6 @@
 #define FAST_MENU_SLEEP_TIMEOUT 2000
 //#define FW_UPDATE_STATE 2
 
-//stopwatch
-#define STOPWATCH_TIME_X_0 52
-#define STOPWATCH_TIME_Y_0 100
-#define STOPWATCH_INTERVAL 1000  //stopwatch dsiplay update rate in ms
 
 //apps 
 /*
@@ -72,7 +68,7 @@
 #define SET_MONTH 3
 #define SET_DAY 4
 #define YEAR_OFFSET 1970
-#define NTP_TIME_SYNC_INTERVAL 10080 //mins, once every 7 days. ie 7 days * 24h * 60min
+#define INTERNET_SYNC_INTERVAL 3 //days
 #define GMT_OFFSET_SEC 28800 //s, set time zone to singapore standard time
                                 // ie UTC 8 * 60 * 60 = 28800
 #define DAYLIGHT_OFFSET_SEC 0 // if observing Daylight saving time 3600 otherwise 0. DOESN'T WORK

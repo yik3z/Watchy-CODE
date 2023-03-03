@@ -1,21 +1,20 @@
-#ifndef WATCHY_7_SEG_H
-#define WATCHY_7_SEG_H
+#ifndef WATCHFACE_DIN
+#define WATCHFACE_DIN
 
 #include <Watchy.h>
-
 #include "DIN_Black35pt7b.h"
 #include "DIN_Medium10pt7b.h"
 #include "icons.h"
 
-class Watchy7SEG : public Watchy{
+class Watchface_DIN : public Watchy{
     public:
-        Watchy7SEG();
+        Watchface_DIN();
         void drawWatchFace();
         void drawTime();
         void drawDate();
         //void drawTemperature();   //temp is messed up idk why. Seems like hardware issue
         void drawBatteryBar();
-        //void drawBleWiFi();
+        //void drawBleWiFi();   //likely won't be using it since wifi/ble won't be constantly on
         void drawLowBatt();
 };
 

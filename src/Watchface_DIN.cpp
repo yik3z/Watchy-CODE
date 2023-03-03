@@ -1,4 +1,4 @@
-#include "Watchy_7_SEG.h"
+#include "Watchface_DIN.h"
 #include "config.h"
 
 const uint8_t BATTERY_BAR_HEIGHT = 4; 
@@ -12,9 +12,12 @@ const uint8_t SPLITTER_LENGTH = 165;
 const uint8_t TEMPERATURE_X_0 = 145;
 const uint8_t TEMPERATURE_Y_0 = 175;
 
-Watchy7SEG::Watchy7SEG(){} //constructor
+extern RTC_DATA_ATTR bool powerSaver; 
+extern RTC_DATA_ATTR bool hourlyTimeUpdate;
 
-void Watchy7SEG::drawWatchFace(){
+Watchface_DIN::Watchface_DIN(){} //constructor
+
+void Watchface_DIN::drawWatchFace(){
     #ifdef DEBUG
     Serial.print("Power Saver: ");
     Serial.println(powerSaver);
@@ -26,13 +29,12 @@ void Watchy7SEG::drawWatchFace(){
     //drawTemperature();
     drawBatteryBar();
     //drawBleWiFi();
-    syncNtpTime();
     if(lowBatt != 0){
         drawLowBatt();
     }
 }
 
-void Watchy7SEG::drawTime(){
+void Watchface_DIN::drawTime(){
     display.setFont(&DIN_Black35pt7b);
     if(darkMode){
         display.setCursor(DATE_TIME_X_0 - 5, DARK_TIME_Y_0);
@@ -55,7 +57,7 @@ void Watchy7SEG::drawTime(){
     }
 }
 
-void Watchy7SEG::drawDate(){
+void Watchface_DIN::drawDate(){
 
     //divider line
     if(darkMode){
@@ -93,7 +95,7 @@ void Watchy7SEG::drawDate(){
     */    
 }
 
-void Watchy7SEG::drawBatteryBar(){
+void Watchface_DIN::drawBatteryBar(){
     //battery bar
     display.fillRect(0, 0, DISPLAY_WIDTH, BATTERY_BAR_HEIGHT, bgColour); //clear battery bar; IS THIS EVEN REQUIRED?
     uint32_t vBatt = getBatteryVoltage();
@@ -113,7 +115,7 @@ void Watchy7SEG::drawBatteryBar(){
     display.fillRect(0, 0, batteryBarWidth, BATTERY_BAR_HEIGHT, fgColour);
 }
 /* probably won't be used since we can't keep wifi or BLE on anyway
-void Watchy7SEG::drawBleWiFi(){
+void Watchface_DIN::drawBleWiFi(){
     if(BLE_CONFIGURED){ 
         display.drawBitmap(150, 20, bluetoothIcon, 13, 21, fgColour);
     }
@@ -124,7 +126,7 @@ void Watchy7SEG::drawBleWiFi(){
 */
 
 
-void Watchy7SEG::drawLowBatt(){
+void Watchface_DIN::drawLowBatt(){
         display.setFont(&FreeMonoBold9pt7b);
     if(lowBatt == 1){
         display.drawBitmap(3, 8, lowBattIcon, 16, 9, fgColour);
@@ -135,7 +137,7 @@ void Watchy7SEG::drawLowBatt(){
 }
 
 /* function disabled till I figure out what's the issue with the wrong temp
-void Watchy7SEG::drawTemperature(){
+void Watchface_DIN::drawTemperature(){
     weatherData currentWeather = getWeatherData(false); //get temp from RTC
     int8_t temperature = currentWeather.temperature;
     display.setFont(&DIN_Medium10pt7b);

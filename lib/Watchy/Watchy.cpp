@@ -12,7 +12,7 @@ RTC_DATA_ATTR BMA423 sensor;
 RTC_DATA_ATTR bool BLE_CONFIGURED = 0;
 RTC_DATA_ATTR weatherData currentWeather;
 RTC_DATA_ATTR int weatherIntervalCounter = WEATHER_UPDATE_INTERVAL;
-RTC_DATA_ATTR int ntpSyncTimeCounter = 0;
+RTC_DATA_ATTR int internetSyncCounter = 0;
 RTC_DATA_ATTR bool darkMode = 0; //global darkmode
 RTC_DATA_ATTR bool fgColour = GxEPD_BLACK; 
 RTC_DATA_ATTR bool bgColour = GxEPD_WHITE; 
@@ -23,18 +23,21 @@ volatile uint64_t wakeupBit;
 RTC_DATA_ATTR time_t lastNtpSync = 0;
 RTC_DATA_ATTR bool lastNtpSyncSuccess = false;
 RTC_DATA_ATTR time_t bootTime = 0;
+//calendar
+//extern const int calEntryCount;        
+extern RTC_DATA_ATTR int calendarLength;
+extern RTC_DATA_ATTR bool lastCalendarSyncSuccess;
+//stopwatch
+//for stopwatch (used by ISRs)
+extern bool stopBtnPressed;
+extern unsigned long stopWatchEndMillis;
 
-uint32_t Freq = 0;
-
-//for stopwatch
-unsigned long stopWatchEndMillis = 0;
-RTC_DATA_ATTR unsigned long finalTimeElapsed = 0;
-bool stopBtnPressed = false;
+//uint32_t Freq = 0; //used for checking CPU frequency
 
 volatile unsigned long lastButtonInterrupt;  //si the last button time pressed
 
 
-const char *menuItems[] = {"Show Stats", "Vibrate Motor", "Show Accelerometer", "Set Time","Dark/Light Mode","Power Saver","Show Temperature","Stopwatch","Sync NTP Time","WiFi OTA"};
+const char *menuItems[] = {"Show Stats", "Vibrate Motor", "Show Calendar", "Set Time","Dark/Light Mode","Power Saver","Show Temperature","Stopwatch","Sync to WiFi","WiFi OTA"};
 int16_t menuOptions = sizeof(menuItems) / sizeof(menuItems[0]);
 
 String getValue(String data, char separator, int index)
@@ -121,7 +124,11 @@ void Watchy::init(String datetime){
             RTC.alarm(ALARM_2); //resets the alarm flag in the RTC
             if(guiState == WATCHFACE_STATE){
                 RTC.read(currentTime);
-                if((currentTime.Hour == 3) && (currentTime.Minute == 0)){    //full refresh late at night
+                if((currentTime.Hour == 3) && (currentTime.Minute == 0)){ //full refresh + internet sync late at night
+                    internetSyncCounter++;
+                    if (internetSyncCounter>INTERNET_SYNC_INTERVAL){
+                      syncInternetStuff();
+                    }
                     showWatchFace(false);
                 } else showWatchFace(true); //partial updates on tick
             }
@@ -172,59 +179,69 @@ void Watchy::init(String datetime){
     }
     deepSleep();
 }
+//    if((internetSyncCounter >= INTERNET_SYNC_INTERVAL)or(usingGui==true)){  
+String Watchy::syncInternetStuff(){
+  String SSID = "";
+  bool connected = initWiFi();
+  if(connected) { 
+    SSID = WiFi.SSID();
+    syncNtpTime();
+    #ifdef DEBUG
+    Serial.print(internetWorks());
+    #endif
+    fetchCalendar();
+    internetSyncCounter = 0;  //reset the counter
+  }
+  WiFi.mode(WIFI_OFF); // shut down the radio to save power
+  btStop();
+  esp_wifi_stop(); 
+  return SSID;
+}
 
 
 /*!
  * @brief NTP time sync. Inspired by etwasmitbaum's Watchy code: https://github.com/etwasmitbaum/Watchy/
  *
- * @param[in] usingGui:  Whether this is a scheduled or forced (GUI) sync
+ * @param[in] usingGui:  Whether this is a scheduled or forced (GUI) sync. Dafault false
  *
  * @returns String of SSID connected. If failed, returns blank string ""
  *  
  */
-String Watchy::syncNtpTime(bool usingGui){
-    String SSID = "";
-    if((ntpSyncTimeCounter >= NTP_TIME_SYNC_INTERVAL)or(usingGui==true)){   
-        //attempt to sync
-        lastNtpSyncSuccess = false;
-        bool connected = initWiFi();
-        if(connected) { 
-            //WIFI_ON = true;
-            SSID = WiFi.SSID();
-            struct tm timeinfo;
-            //get NTP Time
-            configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
-            delay(4000); //delay 4 secods so configTime can finish recieving the time from the internet
-            getLocalTime(&timeinfo);
-            // convert NTP time into proper format
-            currentTime.Month = timeinfo.tm_mon + 1;// 0-11 based month so we have to add 1
-            currentTime.Day = timeinfo.tm_mday;
-            currentTime.Year = timeinfo.tm_year + 1900 - YEAR_OFFSET;//offset from 1970, since year is stored in uint8_t
-            currentTime.Hour = timeinfo.tm_hour;
-            currentTime.Minute = timeinfo.tm_min;
-            currentTime.Second = timeinfo.tm_sec;
-            lastNtpSync = makeTime(currentTime);
-            RTC.set(lastNtpSync);
-            ntpSyncTimeCounter = 0;
-            lastNtpSyncSuccess = true;
-            #ifdef DEBUG
-            Serial.println("Time Synced and set"); //debug
-            #endif //DEBUG
-        
-        WiFi.mode(WIFI_OFF); // shut down the radio to save power
-        //WIFI_ON = false;
-        btStop();
-        esp_wifi_stop(); 
-        }
-    }
-    else{
-        ntpSyncTimeCounter++;
-        #ifdef DEBUG
-        Serial.print("ntpSyncTimeCounter: ");
-        Serial.println(ntpSyncTimeCounter);
-        #endif  //DEBUG
-    }
-    return SSID;
+void Watchy::syncNtpTime(){ 
+  //attempt to sync
+  lastNtpSyncSuccess = false;
+  struct tm timeinfo;
+  //get NTP Time
+  configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
+  delay(4000); //delay 4 secods so configTime can finish recieving the time from the internet
+  getLocalTime(&timeinfo);
+  // convert NTP time into proper format
+  currentTime.Month = timeinfo.tm_mon + 1;// 0-11 based month so we have to add 1
+  currentTime.Day = timeinfo.tm_mday;
+  currentTime.Year = timeinfo.tm_year + 1900 - YEAR_OFFSET;//offset from 1970, since year is stored in uint8_t
+  currentTime.Hour = timeinfo.tm_hour;
+  currentTime.Minute = timeinfo.tm_min;
+  currentTime.Second = timeinfo.tm_sec;
+  lastNtpSync = makeTime(currentTime);
+  RTC.set(lastNtpSync);
+  lastNtpSyncSuccess = true;
+  #ifdef DEBUG
+  Serial.println("Time Synced and set"); //debug
+  #endif //DEBUG
+  
+  WiFi.mode(WIFI_OFF); // shut down the radio to save power
+  //WIFI_ON = false;
+  btStop();
+  esp_wifi_stop(); 
+  /*
+  else{ //leftover logic from when the ntp sync counter was incremented within syncNtpTime
+      internetSyncCounter++;
+      #ifdef DEBUG
+      Serial.print("internetSyncCounter: ");
+      Serial.println(internetSyncCounter);
+      #endif  //DEBUG
+  }
+  */
 }
 
 /*!
@@ -298,9 +315,9 @@ void Watchy::handleButtonPress(){
           showBuzz();
           break;          
         case 2:
-          #ifdef USING_ACCELEROMETER
-          //showAccelerometer();
-          #endif //USING_ACCELEROMETER
+          //#ifdef USING_ACCELEROMETER
+          showCalendar();
+          //#endif //USING_ACCELEROMETER
           break;
         case 3:
           setTime();
@@ -343,7 +360,7 @@ void Watchy::handleButtonPress(){
           //showBuzz();
           break;          
         case 2:
-          //showAccelerometer();    //disabled
+          //showCalendar();    
           break;
         case 3:
           //setTime();
@@ -417,7 +434,7 @@ void Watchy::handleButtonPress(){
           //showBuzz();
           break;          
         case 2:
-          //showAccelerometer();
+          //showCalendar();
           break;
         case 3:
           //setTime();
@@ -471,7 +488,7 @@ void Watchy::handleButtonPress(){
           //showBuzz();
           break;          
         case 2:
-          //showAccelerometer();
+          //showCalendar();
           break;
         case 3:
           //setTime();
@@ -568,8 +585,8 @@ void Watchy::showWatchFace(bool partialRefresh){
     guiState = WATCHFACE_STATE;
 }
 
-void Watchy::drawWatchFace(){
-    display.setFont(&DSEG7_Classic_Bold_53);
+void Watchy::drawWatchFace(){   //placeholder
+    display.setFont(&FreeMonoBold9pt7b);
     display.setCursor(5, 53+60);
     if(currentTime.Hour < 10){
         display.print("0");
@@ -841,6 +858,8 @@ void IRAM_ATTR ISRMenuBtnPress() {
     }
     
 }
+
+
 
 void IRAM_ATTR ISRBackBtnPress() {
     if(millis()-lastButtonInterrupt>BTN_DEBOUNCE_INTERVAL){
