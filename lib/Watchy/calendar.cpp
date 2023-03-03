@@ -1,6 +1,6 @@
 #include "calendar.h"
 
-HTTPClient http;
+
 
 //calendar
 RTC_DATA_ATTR int calendarLength = 0; //actual number of entries in the ESP's records
@@ -10,33 +10,43 @@ RTC_DATA_ATTR bool lastCalendarSyncSuccess = false;
 //String calendarRequest = "https://script.google.com/macros/s/" + String(GOOGLE_CALENDAR_KEY) + "/exec"; //check if this is ok
 bool fetchCalendar(){
   // Getting calendar from your published google script
-  #ifdef DEBUG
-  String calendarRequest = "https://script.google.com/macros/s/AKfycbytWmRPBUTbtxdTkjtsw3yZHyrnLlUzc0VvMeC5VjZ3iI0xo8lpJDUqpWr6q5m2DVR5PQ/exec";
-  Serial.println("Getting calendar");
-  Serial.println(calendarRequest);
-
-  #endif
   lastCalendarSyncSuccess = false;
-  http.end();
-  http.setTimeout(20000);
+  #ifdef DEBUG
+  Serial.print("Getting calendar from: ");
+  Serial.println(GOOGLE_CALENDAR_KEY);
+  #endif
+  if(WiFi.status() != WL_CONNECTED){  //check that WiFi is connected
+    #ifdef DEBUG
+    Serial.print("E: WiFi not connected");
+    #endif
+    return lastCalendarSyncSuccess;
+  }
+  HTTPClient http;
+  String payload = "";
   http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
-  if (!http.begin(calendarRequest)) {
+  if (!http.begin(GOOGLE_CALENDAR_KEY)) {
     #ifdef DEBUG
     Serial.println("Cannot connect to google script");
     #endif
-    return false;
+    return lastCalendarSyncSuccess;
   } 
   #ifdef DEBUG
   Serial.println("Connected to google script");
   #endif
-  int returnCode = http.GET();
+  int httpResponseCode = http.GET();
   #ifdef DEBUG
-  Serial.print("Returncode: "); Serial.println(returnCode);
+  Serial.print("Response Code: "); Serial.println(httpResponseCode);
   #endif
-  String response = http.getString();
-  #ifdef DEBUG
-  Serial.print("Response: "); Serial.println(response);
-  #endif
+  if(httpResponseCode>0){
+    payload = http.getString();
+    lastCalendarSyncSuccess = true;
+    #ifdef DEBUG
+    Serial.print("Calendar payload: "); Serial.println(payload);
+    #endif
+  } else {
+    http.end();
+    return lastCalendarSyncSuccess;
+  }
   http.end();
 
   int indexFrom = 0;
@@ -50,16 +60,16 @@ bool fetchCalendar(){
   #ifdef DEBUG
   Serial.println("IndexFrom");  
   #endif
-  indexFrom = response.lastIndexOf("\n") + 1;
+  indexFrom = payload.lastIndexOf("\n") + 1;
 
   // Fill calendarEntries with entries from the get-request
   while (indexTo>=0 && line<CALENDAR_ENTRY_COUNT) {
     count++;
-    indexTo = response.indexOf(";",indexFrom);
+    indexTo = payload.indexOf(";",indexFrom);
     cutTo = indexTo;
 
     if(indexTo != -1) { 
-      strBuffer = response.substring(indexFrom, cutTo);
+      strBuffer = payload.substring(indexFrom, cutTo);
       
       indexFrom = indexTo + 1;
       
@@ -80,7 +90,6 @@ bool fetchCalendar(){
     }
   }
   calendarLength = line;
-  lastCalendarSyncSuccess = true;
   return lastCalendarSyncSuccess;
 }
 

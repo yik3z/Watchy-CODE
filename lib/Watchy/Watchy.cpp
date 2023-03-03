@@ -185,11 +185,14 @@ String Watchy::syncInternetStuff(){
   bool connected = initWiFi();
   if(connected) { 
     SSID = WiFi.SSID();
-    syncNtpTime();
+    //syncNtpTime();
+    //fetchCalendar();
+    getWeatherData(true); //works alone
     #ifdef DEBUG
-    Serial.print(internetWorks());
+    Serial.print("Internet connectivity test: ");
+    Serial.println(internetWorks());
     #endif
-    fetchCalendar();
+    
     internetSyncCounter = 0;  //reset the counter
   }
   WiFi.mode(WIFI_OFF); // shut down the radio to save power
@@ -609,8 +612,8 @@ void Watchy::drawWatchFace(){   //placeholder
  */
 weatherData Watchy::getWeatherData(bool online){
     if(online){
-        if(weatherIntervalCounter >= WEATHER_UPDATE_INTERVAL){ //only update if WEATHER_UPDATE_INTERVAL has elapsed i.e. 30 minutes
-            if(initWiFi()){//Use Weather API for live data if WiFi is connected
+        // if(weatherIntervalCounter >= WEATHER_UPDATE_INTERVAL){ //only update if WEATHER_UPDATE_INTERVAL has elapsed i.e. 30 minutes
+            // if(initWiFi()){//Use Weather API for live data if WiFi is connected
                 HTTPClient http;
                 http.setConnectTimeout(3000);//3 second max timeout
                 String weatherQueryURL = String(OPENWEATHERMAP_URL) + String(CITY_NAME) + String(",") + String(COUNTRY_CODE) + String("&units=") + String(TEMP_UNIT) + String("&appid=") + String(OPENWEATHERMAP_APIKEY);
@@ -618,6 +621,10 @@ weatherData Watchy::getWeatherData(bool online){
                 int httpResponseCode = http.GET();
                 if(httpResponseCode == 200) {
                     String payload = http.getString();
+                    #ifdef DEBUG
+                    Serial.print("Weather payload: ");
+                    Serial.println(payload);
+                    #endif
                     JSONVar responseObject = JSON.parse(payload);
                     currentWeather.temperature = int(responseObject["main"]["temp"]);
                     currentWeather.weatherConditionCode = int(responseObject["weather"][0]["id"]);            
@@ -626,20 +633,20 @@ weatherData Watchy::getWeatherData(bool online){
                 }
                 http.end();
                 //turn off radios
-                WiFi.mode(WIFI_OFF);
-                btStop();
-            }else{//No WiFi, use RTC Temperature
-                uint8_t temperature = RTC.temperature() / 4; //celsius
-                if(strcmp(TEMP_UNIT, "imperial") == 0){
-                    temperature = temperature * 9. / 5. + 32.; //fahrenheit
-                }
-                currentWeather.temperature = temperature;
-                currentWeather.weatherConditionCode = 800; //placeholder
-            }
+                // WiFi.mode(WIFI_OFF);
+                // btStop();
+            // }else{//No WiFi, use RTC Temperature
+            //     uint8_t temperature = RTC.temperature() / 4; //celsius
+            //     if(strcmp(TEMP_UNIT, "imperial") == 0){
+            //         temperature = temperature * 9. / 5. + 32.; //fahrenheit
+            //     }
+            //     currentWeather.temperature = temperature;
+            //     currentWeather.weatherConditionCode = 800; //placeholder
+            // }
             weatherIntervalCounter = 0;
-        }else{
-            weatherIntervalCounter++;
-        }
+        // }else{
+        //     weatherIntervalCounter++;
+        // }
     }
     else{
         int8_t temperature = RTC.temperature() / 4; //celsius. Seems like the conversion has some problems - gives me temps of 45deg

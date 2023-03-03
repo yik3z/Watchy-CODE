@@ -267,33 +267,33 @@ void Watchy::connectWiFiGUI(){
         display.println("Connected to");
         display.setCursor(30, 50);
         display.println(SSID);
-    }
-    if(lastNtpSyncSuccess){
-        display.setCursor(25, 90);
-        display.println("NTP Synced to:");
-        display.setCursor(70, 120);
-        if(currentTime.Hour < 10){
-            display.print("0");
+        display.setCursor(5, 20);
+        display.println("<Exit");        
+        if(lastNtpSyncSuccess){
+            display.setCursor(25, 90);
+            display.println("NTP Synced to:");
+            display.setCursor(70, 120);
+            if(currentTime.Hour < 10){
+                display.print("0");
+            }
+            display.print(currentTime.Hour);
+            display.print(":");
+            if(currentTime.Minute < 10){
+                display.print("0");
+            }  
+            display.println(currentTime.Minute);  
         }
-        display.print(currentTime.Hour);
-        display.print(":");
-        if(currentTime.Minute < 10){
-            display.print("0");
-        }  
-        display.println(currentTime.Minute);  
-    }
-    if(lastCalendarSyncSuccess){
-        display.setCursor(20, 140);
-        display.println("Calendar Synced");
-    }
-    else{
+        if(lastCalendarSyncSuccess){
+            display.setCursor(20, 140);
+            display.println("Calendar Synced");
+        }
+    }else{
         display.setCursor(30, 30);
         display.println("Sync failed");
         display.setCursor(30, 50);
         display.println("& timed out!");
         display.setCursor(5, 20);
         display.println("<Exit");
-
     }
     display.display(false, darkMode);//full refresh
     WiFi.mode(WIFI_OFF);
