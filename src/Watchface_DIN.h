@@ -12,6 +12,7 @@ class Watchface_DIN : public Watchy{
         void drawWatchFace();
         void drawTime();
         void drawDate();
+        void drawNextCalendarEvent();
         //void drawTemperature();   //temp is messed up idk why. Seems like hardware issue
         void drawBatteryBar();
         //void drawBleWiFi();   //likely won't be using it since wifi/ble won't be constantly on

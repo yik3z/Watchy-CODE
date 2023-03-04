@@ -35,13 +35,6 @@ typedef struct weatherData{
 }weatherData;
 #endif
 
-struct calendarEntries
-{
-  String calDate;
-  String calTime;
-  String calTitle;
-};
-
 class Watchy {
     public:
         static DS3232RTC RTC;
@@ -72,7 +65,7 @@ class Watchy {
         //apps
         void showStats(uint8_t btnPin = 0);
         void showBuzz();
-        void showCalendar();
+        void showCalendar(uint8_t btnPin = 0);
         void connectWiFiGUI();
         void stopWatch(uint8_t btnPin = 0);
         void setDarkMode(uint8_t btnPin = 0);
@@ -117,16 +110,13 @@ extern RTC_DATA_ATTR uint8_t lowBatt;
 extern RTC_DATA_ATTR bool lastNtpSyncSuccess;
 extern RTC_DATA_ATTR bool lastCalendarSyncSuccess;
 
-
-
-//extern struct calendarEntries
 #ifdef USING_ACCELEROMETER
 extern RTC_DATA_ATTR BMA423 sensor;
 #endif //USING_ACCELEROMETER
 
 
 
-
+// for M09 screen
 //extern RTC_DATA_ATTR uint8_t _buffer[(200/8) * 200];
 
 #endif

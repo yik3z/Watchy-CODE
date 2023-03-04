@@ -1,7 +1,9 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define DEBUG
+//#define DEBUG             //enable printing of general debug messages
+//#define DEBUG_CALENDAR    //enable printing of calendar debug messages
+//#define DEBUG_TIMING      //enable printing of timinings (millis())
 #define INCLUDE_WEATHER
 
 //pins
@@ -32,7 +34,7 @@
 #define CITY_NAME "SINGAPORE" //if your city name has a space, replace with '+'
 #define COUNTRY_CODE "SG"
 
-//#define OPENWEATHERMAP_APIKEY "f058fe1cad2afe8e2ddc5d063a64cecb" //defined in sensitive_config.h
+//#define OPENWEATHERMAP_APIKEY "f058fe1cad2afe8e2ddc5d063a64cecb" //this is a generic one, actual one defined in sensitive_config.h
 #define OPENWEATHERMAP_URL "http://api.openweathermap.org/data/2.5/weather?q="
 #define TEMP_UNIT "metric" //use "imperial" for Fahrenheit"
 #define WEATHER_UPDATE_INTERVAL 30 //minutes

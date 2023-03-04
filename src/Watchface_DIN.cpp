@@ -1,13 +1,12 @@
 #include "Watchface_DIN.h"
-#include "config.h"
 
 const uint8_t BATTERY_BAR_HEIGHT = 4; 
 const uint8_t DATE_TIME_X_0 = 15;
-const uint8_t DARK_TIME_Y_0 = 120; 
-const uint8_t LIGHT_TIME_Y_0 = 110; 
+const uint8_t DARK_TIME_Y_0 = 110; 
+const uint8_t LIGHT_TIME_Y_0 = 100; 
 const uint8_t DATE_X_0 = 137; 
-const uint8_t DARK_DATE_Y_0 = 154;
-const uint8_t LIGHT_DATE_Y_0 = 144;
+const uint8_t DARK_DATE_Y_0 = 144;
+const uint8_t LIGHT_DATE_Y_0 = 134;
 const uint8_t SPLITTER_LENGTH = 165;
 const uint8_t TEMPERATURE_X_0 = 145;
 const uint8_t TEMPERATURE_Y_0 = 175;
@@ -15,22 +14,24 @@ const uint8_t TEMPERATURE_Y_0 = 175;
 extern RTC_DATA_ATTR bool powerSaver; 
 extern RTC_DATA_ATTR bool hourlyTimeUpdate;
 
+extern RTC_DATA_ATTR calendarEntries calEnt[CALENDAR_ENTRY_COUNT];  //to print next event on watchface
+extern RTC_DATA_ATTR int calendarLength;
+
 Watchface_DIN::Watchface_DIN(){} //constructor
 
 void Watchface_DIN::drawWatchFace(){
-    #ifdef DEBUG
-    Serial.print("Power Saver: ");
-    Serial.println(powerSaver);
-    #endif  //DEBUG
     display.fillScreen(bgColour);
     display.setTextColor(fgColour);
     drawTime();
     drawDate();
+    if(!hourlyTimeUpdate){
+      drawNextCalendarEvent();
+    }
     //drawTemperature();
     drawBatteryBar();
     //drawBleWiFi();
     if(lowBatt != 0){
-        drawLowBatt();
+      drawLowBatt();
     }
 }
 
@@ -58,41 +59,95 @@ void Watchface_DIN::drawTime(){
 }
 
 void Watchface_DIN::drawDate(){
+	//draw divider line
+	if(darkMode){
+			display.fillRect(DATE_TIME_X_0, DARK_TIME_Y_0 + 10, SPLITTER_LENGTH, 3, fgColour);
+	} else{
+			display.fillRect(DATE_TIME_X_0, LIGHT_TIME_Y_0 + 10, SPLITTER_LENGTH, 3, fgColour);
+	}
 
-    //divider line
-    if(darkMode){
-        display.fillRect(DATE_TIME_X_0, DARK_TIME_Y_0 + 10, SPLITTER_LENGTH, 3, fgColour);
-    } else{
-        display.fillRect(DATE_TIME_X_0, LIGHT_TIME_Y_0 + 10, SPLITTER_LENGTH, 3, fgColour);
-    }
-    display.setFont(&DIN_Medium10pt7b);
-    String dayOfWeek = dayStr(currentTime.Wday);
-    if(darkMode){
-        display.setCursor(DATE_TIME_X_0, DARK_DATE_Y_0);
-    } else{
-        display.setCursor(DATE_TIME_X_0, LIGHT_DATE_Y_0);
-    }
-    display.println(dayOfWeek);
-    if(darkMode){
-        display.setCursor(DATE_X_0, DARK_DATE_Y_0);
-    } else{
-        display.setCursor(DATE_X_0, LIGHT_DATE_Y_0);
-    }
-    if(currentTime.Day < 10){
-    display.print("0");      
-    }     
-    display.print(currentTime.Day);
+//draw day, date
+	display.setFont(&DIN_Medium10pt7b);
+	String dayOfWeek = dayStr(currentTime.Wday);
+	if(darkMode){
+			display.setCursor(DATE_TIME_X_0, DARK_DATE_Y_0);
+	} else{
+			display.setCursor(DATE_TIME_X_0, LIGHT_DATE_Y_0);
+	}
+	display.println(dayOfWeek);
+	if(darkMode){
+			display.setCursor(DATE_X_0, DARK_DATE_Y_0);
+	} else{
+			display.setCursor(DATE_X_0, LIGHT_DATE_Y_0);
+	}
+	if(currentTime.Day < 10){
+	display.print("0");      
+	}     
+	display.print(currentTime.Day);
 
-    display.print("."); 
-    if(currentTime.Month < 10){
-    display.print("0");      
+	display.print("."); 
+	if(currentTime.Month < 10){
+	display.print("0");      
+	}
+	display.print(currentTime.Month);
+	// //removed year printout
+	// display.print("."); 
+	// uint16_t yearTwoDigits = currentTime.Year + YEAR_OFFSET - 2000; //to get '21 hehe
+	// display.println(yearTwoDigits); // offset from 1970, since year is stored in uint8_t
+}
+
+void Watchface_DIN::drawNextCalendarEvent(){
+
+  //choose event to display
+  int nextCalEvent = -1;
+  for (int i=0;i<calendarLength;i++){
+    if (calEnt[i].calDate.Day==currentTime.Day){	//check if there's anything happening today (not checking for months cause I'm assuming that we won't get that far)
+			if((calEnt[i].calDate.Hour>=currentTime.Hour) or (calEnt[i].allDay)){
+				nextCalEvent = i;
+				break;
+			}
     }
-    display.print(currentTime.Month);
-    /* //removed year printout
-    display.print("."); 
-    uint16_t yearTwoDigits = currentTime.Year + YEAR_OFFSET - 2000; //to get '21 hehe
-    display.println(yearTwoDigits); // offset from 1970, since year is stored in uint8_t
-    */    
+		else if ((calEnt[i].calDate.Day>=currentTime.Day)){	// choose the next event happening after today
+			nextCalEvent = i;
+      break;
+    }
+  }
+	if (nextCalEvent==-1){														// no calendar events to display. Don't draw anything
+		return;
+	}
+	// print time of next event
+  display.setFont(&FreeMonoBold9pt7b);
+  display.setCursor(5, 170);
+	if(calEnt[nextCalEvent].calDate.Day < 10){
+	display.print("0");      
+	} 
+	display.print(calEnt[nextCalEvent].calDate.Day);
+	display.print("/");
+	if(calEnt[nextCalEvent].calDate.Month < 10){
+	display.print("0");      
+	}
+	display.print(calEnt[nextCalEvent].calDate.Month);
+	display.print(" ");
+	if (!calEnt[nextCalEvent].allDay){										//not all day event, print time
+		if(calEnt[nextCalEvent].calDate.Hour < 10){
+			display.print("0");      
+		}
+	display.print(calEnt[nextCalEvent].calDate.Hour);
+	display.print(":");
+	if(calEnt[nextCalEvent].calDate.Minute < 10){
+			display.print("0");      
+	}
+	display.print(calEnt[nextCalEvent].calDate.Minute);
+}
+	// print event title
+  display.setCursor(5, 185);
+    for(int j=0; j<17;j++){	// seems to print the first char after the end of the last one
+			if(calEnt[nextCalEvent].calTitle[j]==NULL){
+				break;
+			}
+			display.print(calEnt[nextCalEvent].calTitle[j]);
+		}
+	return;
 }
 
 void Watchface_DIN::drawBatteryBar(){
@@ -124,7 +179,6 @@ void Watchface_DIN::drawBleWiFi(){
     }
 }
 */
-
 
 void Watchface_DIN::drawLowBatt(){
         display.setFont(&FreeMonoBold9pt7b);

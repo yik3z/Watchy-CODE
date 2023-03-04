@@ -14,12 +14,15 @@ extern RTC_DATA_ATTR time_t lastNtpSync;
 extern RTC_DATA_ATTR bool powerSaver;
 
 //for calendar
-RTC_DATA_ATTR calendarEntries calEnt[CALENDAR_ENTRY_COUNT];
+extern RTC_DATA_ATTR calendarEntries calEnt[CALENDAR_ENTRY_COUNT];
+RTC_DATA_ATTR int calendarPage = 1;
+extern RTC_DATA_ATTR int calendarLength;
 
 /*!
  * @brief Displays a GUI and buzzes the motor for a few seconds
  */
 void Watchy::showBuzz(){
+    guiState = APP_STATE;
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
@@ -149,6 +152,7 @@ void Watchy::stopWatch(uint8_t btnPin){
  * Uptime, Last NTP Sync, Power Saver Mode, Battery
  */
 void Watchy::showStats(uint8_t btnPin){
+    guiState = APP_STATE;
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
@@ -179,20 +183,20 @@ void Watchy::showStats(uint8_t btnPin){
     tmElements_t lastNtpSync_elements;
     breakTime(lastNtpSync, lastNtpSync_elements);
     if(lastNtpSync_elements.Hour < 10){
-        display.print("0");
+      display.print("0");
     }
     display.print(lastNtpSync_elements.Hour);
     if(lastNtpSync_elements.Minute < 10){
-        display.print("0");
+      display.print("0");
     }  
     display.print(lastNtpSync_elements.Minute); 
     display.print("h");
     if(lastNtpSync_elements.Day < 10){
-        display.print("0");
+      display.print("0");
     }
     display.print(lastNtpSync_elements.Day);
     if(lastNtpSync_elements.Month < 10){
-        display.print("0");
+      display.print("0");
     } 
     display.print(lastNtpSync_elements.Month);  
     display.print(";");
@@ -219,267 +223,316 @@ void Watchy::showStats(uint8_t btnPin){
     guiState = APP_STATE;      
 }
 
-void Watchy::showCalendar(){
-    display.setFullWindow();
-    display.fillScreen(bgColour);
-    display.setFont(&FreeMonoBold9pt7b);
-    display.setTextColor(fgColour);
+void Watchy::showCalendar(uint8_t btnPin){
+	guiState = APP_STATE;
+	display.setFullWindow();
+	display.fillScreen(bgColour);
+	display.setFont(&FreeMonoBold9pt7b);
+	display.setTextColor(fgColour);
+	if(calendarLength==0){
+		display.setCursor(70, 90);
+		display.print("Empty...");
+		display.setCursor(15, 132);
+		display.print("Have you synced?");
+	}
+	// Set position for the first calendar entry
+	int x = 0;
+	int y = 20;
+	
+	if(btnPin == UP_BTN_PIN){
+		calendarPage--;
+	}else if(btnPin == DOWN_BTN_PIN){
+		calendarPage++;
+	}
+	else{   // no button was pressed -> app just entered, set calendar to page 1
+		calendarPage = 1;
+	}
+	if(calendarPage>CALENDAR_MAX_PAGES){ // stop calendar scrolling at last page
+		calendarPage = CALENDAR_MAX_PAGES;
+	}
+	else if(calendarPage<1){ // 3 pages is hardcoded for now
+		calendarPage = 1;
+	}
+	int endEntry = min((calendarPage*3), calendarLength);  //last entry to be displayed on a certain page
 
-    // Set position for the first calendar entry
-    int x = 5;
-    int y = 20;
-    // Print calendar entries from first [0] to the last fetched [line-1] - in case there is fewer events than the maximum allowed
-    for(int i=0;  i < 2 /*calendarLength*/; i++) {  //prints only 2 events for space for now
+	// Print calendar entries from first [0] to the last fetched [calendarLength-1] - in case there is fewer events than the maximum allowed
+	for(int i=(calendarPage-1)*3;  i<endEntry; i++) {  //prints 3 events per page
 
-      // Print event time
-      display.setCursor(x, y);
-      display.print(calEnt[i].calDate);
-      display.setCursor(x, y+15);
-      display.print(calEnt[i].calTime);
-      // Print event title
-      display.setCursor(x, y+30);
-      display.print(calEnt[i].calTitle);
-      #ifdef DEBUG
-      Serial.println(calEnt[i].calDate);
-      display.println(calEnt[i].calTime);
-      display.println(calEnt[i].calTitle);
-      #endif
-      // Prepare y-position for next event entry
-      y = y + 45;
-    }
-    display.display(true, darkMode); //partial refresh (true)
-  }
+		// Print event time
+		display.setCursor(x, y);
+		if(calEnt[i].calDate.Day < 10){
+			display.print("0");      
+		} 
+		display.print(calEnt[i].calDate.Day);
+		display.print("/");
+		if(calEnt[i].calDate.Month < 10){
+			display.print("0");      
+		}
+		display.print(calEnt[i].calDate.Month);
+		display.print(" ");
+		if (!calEnt[i].allDay){												//not all day event, print time
+			if(calEnt[i].calDate.Hour < 10){
+				display.print("0");      
+			}
+			display.print(calEnt[i].calDate.Hour);
+			display.print(":");
+			if(calEnt[i].calDate.Minute < 10){
+				display.print("0");      
+			}
+			display.print(calEnt[i].calDate.Minute);
+		}
+		// else{
+		// 	display.print("all day");	//just don't print anything
+		// }
+		
+		// Print event title
+		display.setCursor(x, y+15);
+		for(int j=0; j<CALENDAR_EVENT_TITLE_LENGTH+1;j++){
+			if(calEnt[i].calTitle[j]==NULL){
+					#ifdef DEBUG_CALENDAR
+					Serial.println("Null character found, breaking print loop");
+					#endif
+					break;
+			}
+			display.print(calEnt[i].calTitle[j]);
+		}
+		#ifdef DEBUG_CALENDAR
+		Serial.print(calEnt[i].calDate.Day);
+		Serial.print(" | ");
+		Serial.println(calEnt[i].calTitle[0]);
+		#endif //DEBUG_CALENDAR
+		// Prepare y-position for next event entry
+		y = y + 60;
+
+		// print page number
+		display.setCursor(185, 195);
+		display.print(calendarPage);
+		#ifdef DEBUG_CALENDAR
+		Serial.print("Page: ");
+		Serial.println(calendarPage);
+		#endif
+	}
+	display.display(true, darkMode); //partial refresh (true)
+}
 
 void Watchy::connectWiFiGUI(){
-    //TODO: add in functionality to retry wifi
-    guiState = APP_STATE;  
-    display.setFullWindow();
-    display.fillScreen(bgColour);
-    display.setFont(&FreeMonoBold9pt7b);
-    display.setTextColor(fgColour);
-    display.setCursor(30, 90);
-    display.println("Connecting...");
-    display.display(false, darkMode);
-    display.hibernate();
-    String SSID = syncInternetStuff();    //perform NTP syncing
-    display.init(0, false);
-    display.setFullWindow();
-    display.fillScreen(bgColour);
-    display.setTextColor(fgColour);
-    if(SSID!=""){
-        display.setCursor(30, 30);
-        display.println("Connected to");
-        display.setCursor(30, 50);
-        display.println(SSID);
-        display.setCursor(5, 20);
-        display.println("<Exit");        
-        if(lastNtpSyncSuccess){
-            display.setCursor(25, 90);
-            display.println("NTP Synced to:");
-            display.setCursor(70, 120);
-            if(currentTime.Hour < 10){
-                display.print("0");
-            }
-            display.print(currentTime.Hour);
-            display.print(":");
-            if(currentTime.Minute < 10){
-                display.print("0");
-            }  
-            display.println(currentTime.Minute);  
-        }
-        if(lastCalendarSyncSuccess){
-            display.setCursor(20, 140);
-            display.println("Calendar Synced");
-            #ifdef DEBUG
-            Serial.print("Calendar (connectWifiGUI): ");
-            for (int i=0; i<2;i++) {
-                Serial.print(calEnt[i].calDate);
-                Serial.print(calEnt[i].calTime);
-                Serial.print(calEnt[i].calTitle);
-            }
-            Serial.println();
-            #endif
-
-        }
-    }else{
-        display.setCursor(30, 30);
-        display.println("Sync failed");
-        display.setCursor(30, 50);
-        display.println("& timed out!");
-        display.setCursor(5, 20);
-        display.println("<Exit");
-    }
-    display.display(false, darkMode);//full refresh
-    WiFi.mode(WIFI_OFF);
-    esp_wifi_stop();
-    btStop();
+	//TODO: add in functionality to retry wifi
+	guiState = APP_STATE;  
+	display.setFullWindow();
+	display.fillScreen(bgColour);
+	display.setFont(&FreeMonoBold9pt7b);
+	display.setTextColor(fgColour);
+	display.setCursor(30, 90);
+	display.println("Connecting...");
+	display.display(false, darkMode);
+	display.hibernate();
+	String SSID = syncInternetStuff();    //perform NTP syncing
+	display.init(0, false);
+	display.setFullWindow();
+	display.fillScreen(bgColour);
+	display.setTextColor(fgColour);
+	if(SSID!=""){
+		display.setCursor(30, 40);
+		display.println("Connected to");
+		display.setCursor(30, 60);
+		display.println(SSID);
+		display.setCursor(5, 20);
+		display.println("<Exit");        
+		if(lastNtpSyncSuccess){
+			display.setCursor(25, 100);
+			display.println("NTP Synced to:");
+			display.setCursor(70, 120);
+			if(currentTime.Hour < 10){
+					display.print("0");
+			}
+			display.print(currentTime.Hour);
+			display.print(":");
+			if(currentTime.Minute < 10){
+				display.print("0");
+			}  
+			display.println(currentTime.Minute);  
+		}
+		if(lastCalendarSyncSuccess){
+			display.setCursor(15, 155);
+			display.println("Calendar Synced");
+		}
+	}else{
+		display.setCursor(30, 50);
+		display.println("Sync failed");
+		display.setCursor(30, 70);
+		display.println("& timed out!");
+		display.setCursor(5, 20);
+		display.println("<Exit");
+	}
+	display.display(false, darkMode);//full refresh
+	WiFi.mode(WIFI_OFF);
+	esp_wifi_stop();
+	btStop();
 }   //connectWiFiGUI
 
 void Watchy::wifiOta(uint8_t btnPin){
-    //TODO: add in functionality to retry wifi connection
-    guiState = APP_STATE;  
-    display.setFullWindow();
-    display.fillScreen(bgColour);
-    display.setFont(&FreeMonoBold9pt7b);
-    display.setTextColor(fgColour);
-    display.setCursor(55, 80);
-    display.println("WiFi OTA");
-    display.setCursor(33, 110);
-    display.println("Connecting...");
-    display.display(true, darkMode);//full refresh
-    display.hibernate();    //hibernate to wait for wifi to connect
-    #ifndef DEBUG
-    Serial.begin(115200);   //enable serial if not enabled already
-    #endif
-    bool connected = initWiFi();    //start wifi
-    if(connected){
-        ArduinoOTA
-            .onStart([]() {
-            String type;
-            if (ArduinoOTA.getCommand() == U_FLASH)
-                type = "sketch";
-            else // U_SPIFFS
-                type = "filesystem";
+	//TODO: add in functionality to retry wifi connection
+	guiState = APP_STATE;  
+	display.setFullWindow();
+	display.fillScreen(bgColour);
+	display.setFont(&FreeMonoBold9pt7b);
+	display.setTextColor(fgColour);
+	display.setCursor(55, 80);
+	display.println("WiFi OTA");
+	display.setCursor(43, 110);
+	display.println("Connecting...");
+	display.display(true, darkMode);//full refresh
+	display.hibernate();    //hibernate to wait for wifi to connect
+	#ifndef DEBUG
+	Serial.begin(115200);   //enable serial if not enabled already
+	#endif
+	bool connected = initWiFi();    //start wifi
+	if(connected){
+		ArduinoOTA
+			.onStart([]() {
+			String type;
+			if (ArduinoOTA.getCommand() == U_FLASH)
+					type = "sketch";
+			else // U_SPIFFS
+					type = "filesystem";
 
-            // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-            Serial.println("Start updating " + type);
-            })
-            .onEnd([]() {
-            Serial.println("\nEnd");
-            })
-            .onProgress([](unsigned int progress, unsigned int total) {
-            Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-            })
-            .onError([](ota_error_t error) {
-            Serial.printf("Error[%u]: ", error);
-            if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
-            else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
-            else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
-            else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-            else if (error == OTA_END_ERROR) Serial.println("End Failed");
-            });
+			// NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
+			Serial.println("Start updating " + type);
+			})
+			.onEnd([]() {
+			Serial.println("\nEnd");
+			})
+			.onProgress([](unsigned int progress, unsigned int total) {
+			Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+			})
+			.onError([](ota_error_t error) {
+			Serial.printf("Error[%u]: ", error);
+			if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+			else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+			else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+			else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+			else if (error == OTA_END_ERROR) Serial.println("End Failed");
+			});
 
-        ArduinoOTA.begin();
-        Serial.println("Ready");
-        Serial.print("IP address: ");
-        Serial.println(WiFi.localIP());
-        Serial.println("Press down button to cancel");
-        attachInterrupt(DOWN_BTN_PIN, ISRStopwatchEnd, RISING); //use the same stopwatch interrupt function to stop OTA
+		ArduinoOTA.begin();
+		Serial.println("Ready");
+		Serial.print("IP address: ");
+		Serial.println(WiFi.localIP());
+		Serial.println("Press down button to cancel");
+		attachInterrupt(DOWN_BTN_PIN, ISRStopwatchEnd, RISING); //use the same stopwatch interrupt function to stop OTA
 
-        display.init(0, false); //re-init after hibernating (waiting for wifi)
-        display.setFullWindow();
-        display.fillScreen(bgColour);
-        //display.setTextColor(fgColour);   //TESTING
-        display.setCursor(37, 40);
-        display.println("Connected to");
-        display.setCursor(40, 60);
-        display.println(WiFi.SSID());
-        display.setCursor(20, 100);
-        display.println(WiFi.localIP());
-        display.setCursor(20, 130);
-        display.println("Upload code now");
-        display.setCursor(120, 195);
-        display.println("Cancel>"); 
-        display.display(true, darkMode);
-        display.hibernate();
-        while(true){
-            if (stopBtnPressed == true){
-                detachInterrupt(DOWN_BTN_PIN);
-                stopBtnPressed = false;
-                #ifndef DEBUG
-                Serial.end();    //disables serial if it was disabled before OTA
-                #endif //DEBUG
-                break;
-            }
-            ArduinoOTA.handle();    //no display updates here because it'll probably break the OTA update. A successful OTA should reboot the ESP
-        } //while(true)
-    } //if(connected)
-    //if we get this far it means the OTA loop was cancelled
+		display.init(0, false); //re-init after hibernating (waiting for wifi)
+		display.setFullWindow();
+		display.fillScreen(bgColour);
+		//display.setTextColor(fgColour);   //TESTING
+		display.setCursor(37, 40);
+		display.println("Connected to");
+		display.setCursor(40, 60);
+		display.println(WiFi.SSID());
+		display.setCursor(20, 100);
+		display.println(WiFi.localIP());
+		display.setCursor(20, 130);
+		display.println("Upload code now");
+		display.setCursor(120, 195);
+		display.println("Cancel>"); 
+		display.display(true, darkMode);
+		display.hibernate();
+		while(true){
+			if (stopBtnPressed == true){
+				detachInterrupt(DOWN_BTN_PIN);
+				stopBtnPressed = false;
+				#ifndef DEBUG
+				Serial.end();    //disables serial if it was disabled before OTA
+				#endif //DEBUG
+				break;
+			}
+			ArduinoOTA.handle();    //no display updates here because it'll probably break the OTA update. A successful OTA should reboot the ESP
+		} //while(true)
+	} //if(connected)
+	//if we get this far it means the OTA loop was cancelled
 
-    //turn off WiFi
-    WiFi.mode(WIFI_OFF);
-    esp_wifi_stop();
-    btStop();
+	//turn off WiFi
+	WiFi.mode(WIFI_OFF);
+	esp_wifi_stop();
+	btStop();
 
-    //update screen
-    display.init(0, false); //re-init after hibernating
-    display.setFullWindow();
-    display.fillScreen(bgColour);
-    //display.setFont(&FreeMonoBold9pt7b);
-    //display.setTextColor(fgColour);
-    display.setCursor(40, 110);
-    display.println("OTA Aborted");
-    display.setCursor(5,20);
-    display.println("<Exit");
-    display.display(true, darkMode); //partial refresh
+	//update screen
+	display.init(0, false); //re-init after hibernating
+	display.setFullWindow();
+	display.fillScreen(bgColour);
+	//display.setFont(&FreeMonoBold9pt7b);
+	//display.setTextColor(fgColour);
+	display.setCursor(40, 110);
+	display.println("OTA Aborted");
+	display.setCursor(5,20);
+	display.println("<Exit");
+	display.display(true, darkMode); //partial refresh
 } //wifiOta
 
 void Watchy::setPowerSaver(uint8_t btnPin){ //does not do anything at the moment
-    display.setFullWindow();
-    display.fillScreen(bgColour);
-    display.setFont(&FreeMonoBold9pt7b);
-    display.setTextColor(fgColour);
-    display.setCursor(35, 50);
-    display.println("Power Saver");
-    display.setCursor(85, 100);
-    if(btnPin == DOWN_BTN_PIN){    //toggle power saver if button has been pressed
-        powerSaver = !powerSaver;
-        #ifdef DEBUG
-        Serial.print("Power Saver: ");
-        Serial.println(powerSaver);  
-        #endif  //DEBUG
-    }
-    #ifdef DEBUG
-    Serial.print("Button Pressed: ");
-    Serial.println(btnPin);  
-    #endif  //DEBUG
-    display.println(powerSaver ? "On" : "Off");
-    display.setCursor(45, 125);
-    display.println("Not in use!");
-    display.display(true, darkMode);  //partial update
-    display.setCursor(115, 195);
-    display.println("Toggle>");
-    guiState = APP_STATE;    
+	guiState = APP_STATE;
+	display.setFullWindow();
+	display.fillScreen(bgColour);
+	display.setFont(&FreeMonoBold9pt7b);
+	display.setTextColor(fgColour);
+	display.setCursor(35, 50);
+	display.println("Power Saver");
+	display.setCursor(85, 100);
+	if(btnPin == DOWN_BTN_PIN){    //toggle power saver if button has been pressed
+		powerSaver = !powerSaver;
+		#ifdef DEBUG
+		Serial.print("Power Saver: ");
+		Serial.println(powerSaver);  
+		#endif  //DEBUG
+	}
+	#ifdef DEBUG
+	Serial.print("Button Pressed: ");
+	Serial.println(btnPin);  
+	#endif  //DEBUG
+	display.println(powerSaver ? "On" : "Off");
+	display.setCursor(45, 125);
+	display.println("Not in use!");
+	display.display(true, darkMode);  //partial update
+	display.setCursor(115, 195);
+	display.println("Toggle>");
+	guiState = APP_STATE;    
 }
 
 void Watchy::setDarkMode(uint8_t btnPin){
-    if(btnPin == DOWN_BTN_PIN){    //toggle darkmode if button has been pressed
-        darkMode = !darkMode;
-        fgColour = darkMode ? GxEPD_WHITE : GxEPD_BLACK; 
-        bgColour = darkMode ? GxEPD_BLACK : GxEPD_WHITE; 
-        #ifdef DEBUG
-        Serial.println(darkMode);   //debug
-        #endif
-    }
-    #ifdef DEBUG
-    Serial.println(btnPin);   //debug
-    #endif
-    display.setFullWindow();
-    display.fillScreen(bgColour);
-    display.setFont(&FreeMonoBold9pt7b);
-    display.setTextColor(fgColour);
-    display.setCursor(50, 75);
-    display.println("Dark Mode");
-    display.setCursor(85, 100);
-    display.println(darkMode ? "On" : "Off");
-    display.setCursor(115, 195);
-    display.println("Toggle>");
+	guiState = APP_STATE;
+	if(btnPin == DOWN_BTN_PIN){    //toggle darkmode if button has been pressed
+		darkMode = !darkMode;
+		fgColour = darkMode ? GxEPD_WHITE : GxEPD_BLACK; 
+		bgColour = darkMode ? GxEPD_BLACK : GxEPD_WHITE; 
+		#ifdef DEBUG
+		Serial.println(darkMode);   //debug
+		#endif
+	}
+	#ifdef DEBUG
+	Serial.println(btnPin);   //debug
+	#endif
+	display.setFullWindow();
+	display.fillScreen(bgColour);
+	display.setFont(&FreeMonoBold9pt7b);
+	display.setTextColor(fgColour);
+	display.setCursor(50, 75);
+	display.println("Dark Mode");
+	display.setCursor(85, 100);
+	display.println(darkMode ? "On" : "Off");
+	display.setCursor(115, 195);
+	display.println("Toggle>");
 
-    if(btnPin == DOWN_BTN_PIN){
-        display.display(false, darkMode); //full update since darkmode changes the entire display
-    } else{
-        display.display(true, darkMode); //partial update
-    }
-    guiState = APP_STATE;      
+	if(btnPin == DOWN_BTN_PIN){
+			display.display(false, darkMode); //full update since darkmode changes the entire display
+	} else{
+			display.display(true, darkMode); //partial update
+	}   
 }
 
 //  GUI to allow the user to manually set the date and time
 void Watchy::setTime(){
-
     guiState = APP_STATE;
-
     RTC.read(currentTime);
-
     int8_t minute = currentTime.Minute;
     int8_t hour = currentTime.Hour;
     int8_t day = currentTime.Day;
@@ -500,40 +553,40 @@ void Watchy::setTime(){
     while(1){
 
     if(digitalRead(MENU_BTN_PIN) == 1){
-        setIndex++;
-        if(setIndex > SET_DAY){
-        break;
-        }
+			setIndex++;
+			if(setIndex > SET_DAY){
+			break;
+			}
     }
     if(digitalRead(BACK_BTN_PIN) == 1){
-        if(setIndex != SET_HOUR){
-        setIndex--;
-        }
+			if(setIndex != SET_HOUR){
+			setIndex--;
+			}
     }      
 
     blink = 1 - blink;
 
     if(digitalRead(DOWN_BTN_PIN) == 1){
-        blink = 1;
-        switch(setIndex){
-        case SET_HOUR:
-            hour == 23 ? (hour = 0) : hour++;
-            break;
-        case SET_MINUTE:
-            minute == 59 ? (minute = 0) : minute++;
-            break;
-        case SET_YEAR:
-            year == 99 ? (year = 20) : year++;
-            break;
-        case SET_MONTH:
-            month == 12 ? (month = 1) : month++;
-            break;
-        case SET_DAY:
-            day == 31 ? (day = 1) : day++;
-            break;                         
-        default:
-            break;
-        }      
+			blink = 1;
+			switch(setIndex){
+			case SET_HOUR:
+				hour == 23 ? (hour = 0) : hour++;
+				break;
+			case SET_MINUTE:
+				minute == 59 ? (minute = 0) : minute++;
+				break;
+			case SET_YEAR:
+				year == 99 ? (year = 20) : year++;
+				break;
+			case SET_MONTH:
+				month == 12 ? (month = 1) : month++;
+				break;
+			case SET_DAY:
+				day == 31 ? (day = 1) : day++;
+				break;                         
+			default:
+				break;
+			}      
     }
 
     if(digitalRead(UP_BTN_PIN) == 1){
@@ -636,6 +689,7 @@ void Watchy::setTime(){
 //GUI to show temperature
 //temperature taken from BMA423 Accelerometer lol
 void Watchy::showTemperature(uint8_t btnPin){
+    guiState = APP_STATE;
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
@@ -656,6 +710,7 @@ void Watchy::showTemperature(uint8_t btnPin){
 
 #ifdef USING_ACCELEROMETER
 void Watchy::showAccelerometer(){
+    guiState = APP_STATE;
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
