@@ -1,5 +1,7 @@
 #include "Watchy.h"
 
+//TODO: change display code back to max cpu speed, because it slows things
+
 DS3232RTC Watchy::RTC(false); 
 GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> Watchy::display(GxEPD2_154_D67(CS, DC, RESET, BUSY));
 
@@ -12,7 +14,7 @@ RTC_DATA_ATTR BMA423 sensor;
 RTC_DATA_ATTR bool BLE_CONFIGURED = 0;
 RTC_DATA_ATTR weatherData currentWeather;
 RTC_DATA_ATTR int weatherIntervalCounter = WEATHER_UPDATE_INTERVAL;
-RTC_DATA_ATTR int ntpSyncTimeCounter = 0;
+RTC_DATA_ATTR int internetSyncCounter = 0;
 RTC_DATA_ATTR bool darkMode = 0; //global darkmode
 RTC_DATA_ATTR bool fgColour = GxEPD_BLACK; 
 RTC_DATA_ATTR bool bgColour = GxEPD_WHITE; 
@@ -23,18 +25,20 @@ volatile uint64_t wakeupBit;
 RTC_DATA_ATTR time_t lastNtpSync = 0;
 RTC_DATA_ATTR bool lastNtpSyncSuccess = false;
 RTC_DATA_ATTR time_t bootTime = 0;
-
-uint32_t Freq = 0;
-
-//for stopwatch
-unsigned long stopWatchEndMillis = 0;
-RTC_DATA_ATTR unsigned long finalTimeElapsed = 0;
-bool stopBtnPressed = false;
+//calendar
+//extern const int calEntryCount;        
+extern RTC_DATA_ATTR int calendarLength;
+extern RTC_DATA_ATTR bool lastCalendarSyncSuccess;
+extern RTC_DATA_ATTR calendarEntries calEnt[CALENDAR_ENTRY_COUNT];
+//stopwatch
+//for stopwatch (used by ISRs)
+extern bool stopBtnPressed;
+extern unsigned long stopWatchEndMillis;
 
 volatile unsigned long lastButtonInterrupt;  //si the last button time pressed
 
 
-const char *menuItems[] = {"Show Stats", "Vibrate Motor", "Show Accelerometer", "Set Time","Dark/Light Mode","Power Saver","Show Temperature","Stopwatch","Sync NTP Time","WiFi OTA"};
+const char *menuItems[] = {"Show Stats", "Vibrate Motor", "Show Calendar", "Set Time","Dark/Light Mode","Power Saver","Show Temperature","Stopwatch","Sync to WiFi","WiFi OTA"};
 int16_t menuOptions = sizeof(menuItems) / sizeof(menuItems[0]);
 
 String getValue(String data, char separator, int index)
@@ -63,21 +67,20 @@ void Watchy::init(String datetime){
 
     #ifdef DEBUG
     Serial.begin(115200);
+    #ifdef DEBUG_TIMING
     Serial.println("wakeup: " + String(millis()));
+    #endif //DEBUG_TIMING
     //Serial.println(wakeup_reason);
 
-    //to check CPU freq
-    // Freq = getCpuFrequencyMhz(); //240Hmz
+    // //to check CPU freq
     // Serial.print("CPU Freq = ");
-    // Serial.print(Freq);
+    // Serial.print(getCpuFrequencyMhz());
     // Serial.println(" MHz");
-    // Freq = getXtalFrequencyMhz();
     // Serial.print("XTAL Freq = ");
-    // Serial.print(Freq);
+    // Serial.print(getXtalFrequencyMhz());
     // Serial.println(" MHz");
-    // Freq = getApbFrequency();
     // Serial.print("APB Freq = ");
-    // Serial.print(Freq);
+    // Serial.print(getApbFrequency());
     // Serial.println(" Hz");
 
     #endif //DEBUG
@@ -121,7 +124,11 @@ void Watchy::init(String datetime){
             RTC.alarm(ALARM_2); //resets the alarm flag in the RTC
             if(guiState == WATCHFACE_STATE){
                 RTC.read(currentTime);
-                if((currentTime.Hour == 3) && (currentTime.Minute == 0)){    //full refresh late at night
+                if((currentTime.Hour == 3) && (currentTime.Minute == 0)){ //full refresh + internet sync late at night
+                    internetSyncCounter++;
+                    if (internetSyncCounter>INTERNET_SYNC_INTERVAL){
+                      syncInternetStuff();
+                    }
                     showWatchFace(false);
                 } else showWatchFace(true); //partial updates on tick
             }
@@ -166,107 +173,107 @@ void Watchy::init(String datetime){
             showWatchFace(false); //full update on reset
             break;
     }
-    #ifdef DEBUG
+    #ifdef DEBUG_TIMING
     Serial.println("Sleep: " + String(millis()));
-    #endif //DEBUG
+    #endif //DEBUG_TIMING
     }
     deepSleep();
+}
+//    if((internetSyncCounter >= INTERNET_SYNC_INTERVAL)or(usingGui==true)){  
+String Watchy::syncInternetStuff(){
+  String SSID = "";
+  bool connected = initWiFi(); //check
+  if(connected) { 
+    SSID = WiFi.SSID();
+    syncNtpTime();
+    fetchCalendar();
+    //getWeatherData(true); //works alone
+    #ifdef DEBUG
+    //Serial.print("Internet connectivity test: ");
+    //Serial.println(internetWorks());
+    #endif
+    
+    internetSyncCounter = 0;  //reset the counter
+  }
+  WiFi.mode(WIFI_OFF); // shut down the radio to save power
+  btStop();
+  esp_wifi_stop(); 
+  return SSID;
 }
 
 
 /*!
  * @brief NTP time sync. Inspired by etwasmitbaum's Watchy code: https://github.com/etwasmitbaum/Watchy/
  *
- * @param[in] usingGui:  Whether this is a scheduled or forced (GUI) sync
+ * @param[in] usingGui:  Whether this is a scheduled or forced (GUI) sync. Dafault false
  *
  * @returns String of SSID connected. If failed, returns blank string ""
  *  
  */
-String Watchy::syncNtpTime(bool usingGui){
-    String SSID = "";
-    if((ntpSyncTimeCounter >= NTP_TIME_SYNC_INTERVAL)or(usingGui==true)){   
-        //attempt to sync
-        lastNtpSyncSuccess = false;
-        bool connected = initWiFi();
-        if(connected) { 
-            //WIFI_ON = true;
-            SSID = WiFi.SSID();
-            struct tm timeinfo;
-            //get NTP Time
-            configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
-            delay(4000); //delay 4 secods so configTime can finish recieving the time from the internet
-            getLocalTime(&timeinfo);
-            // convert NTP time into proper format
-            currentTime.Month = timeinfo.tm_mon + 1;// 0-11 based month so we have to add 1
-            currentTime.Day = timeinfo.tm_mday;
-            currentTime.Year = timeinfo.tm_year + 1900 - YEAR_OFFSET;//offset from 1970, since year is stored in uint8_t
-            currentTime.Hour = timeinfo.tm_hour;
-            currentTime.Minute = timeinfo.tm_min;
-            currentTime.Second = timeinfo.tm_sec;
-            lastNtpSync = makeTime(currentTime);
-            RTC.set(lastNtpSync);
-            ntpSyncTimeCounter = 0;
-            lastNtpSyncSuccess = true;
-            #ifdef DEBUG
-            Serial.println("Time Synced and set"); //debug
-            #endif //DEBUG
-        
-        WiFi.mode(WIFI_OFF); // shut down the radio to save power
-        //WIFI_ON = false;
-        btStop();
-        esp_wifi_stop(); 
-        }
-    }
-    else{
-        ntpSyncTimeCounter++;
-        #ifdef DEBUG
-        Serial.print("ntpSyncTimeCounter: ");
-        Serial.println(ntpSyncTimeCounter);
-        #endif  //DEBUG
-    }
-    return SSID;
+void Watchy::syncNtpTime(){ 
+  //attempt to sync
+  lastNtpSyncSuccess = false;
+  struct tm timeinfo;
+
+  configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);  //get NTP Time
+  delay(4000); //delay 4 secods so configTime can finish recieving the time from the internet
+  getLocalTime(&timeinfo);
+  // convert NTP time into proper format
+  currentTime.Month = timeinfo.tm_mon + 1;// 0-11 based month so we have to add 1
+  currentTime.Day = timeinfo.tm_mday;
+  currentTime.Year = timeinfo.tm_year + 1900 - YEAR_OFFSET;//offset from 1970, since year is stored in uint8_t
+  currentTime.Hour = timeinfo.tm_hour;
+  currentTime.Minute = timeinfo.tm_min;
+  currentTime.Second = timeinfo.tm_sec;
+  lastNtpSync = makeTime(currentTime);
+  RTC.set(lastNtpSync);
+  lastNtpSyncSuccess = true;
+  #ifdef DEBUG
+  Serial.println("Time Synced and set"); //debug
+  #endif //DEBUG
 }
 
-/*!
- * @brief Shuts down everything and puts the ESP32 to deepsleep:
+/*
+ * Shuts down everything and puts the ESP32 to deepsleep:
+ *
  * - turns on ext0, ext1 wakeups
  * - turns off ADCs (save power)
  * - sets display to hibernate
  *
  */
-void Watchy::deepSleep(){
-    display.hibernate();
-    #ifndef ESP_RTC
-    esp_sleep_enable_ext0_wakeup(RTC_PIN, 0); //enable deep sleep wake on RTC interrupt
-    #endif  
-    #ifdef ESP_RTC
-    esp_sleep_enable_timer_wakeup(60000000);
-    #endif 
-    esp_sleep_enable_ext1_wakeup(BTN_PIN_MASK, ESP_EXT1_WAKEUP_ANY_HIGH); //enable deep sleep wake on button press
-    adc_power_off();
-    esp_deep_sleep_start();
+void Watchy::deepSleep(){ //TODO: set all pins to inputs to save power??
+  display.hibernate();
+  #ifndef ESP_RTC
+  esp_sleep_enable_ext0_wakeup(RTC_PIN, 0); //enable deep sleep wake on RTC interrupt
+  #endif  
+  #ifdef ESP_RTC
+  esp_sleep_enable_timer_wakeup(60000000);
+  #endif 
+  esp_sleep_enable_ext1_wakeup(BTN_PIN_MASK, ESP_EXT1_WAKEUP_ANY_HIGH); //enable deep sleep wake on button press
+  adc_power_off();
+  esp_deep_sleep_start();
 }
 
 void Watchy::_rtcConfig(String datetime){
-    if(datetime != NULL){
-        const time_t FUDGE(30);//fudge factor to allow for upload time, etc. (seconds, YMMV)
-        tmElements_t tm;
-        tm.Year = getValue(datetime, ':', 0).toInt() - YEAR_OFFSET;//offset from 1970, since year is stored in uint8_t        
-        tm.Month = getValue(datetime, ':', 1).toInt();
-        tm.Day = getValue(datetime, ':', 2).toInt();
-        tm.Hour = getValue(datetime, ':', 3).toInt();
-        tm.Minute = getValue(datetime, ':', 4).toInt();
-        tm.Second = getValue(datetime, ':', 5).toInt();
+  if(datetime != NULL){
+    const time_t FUDGE(30);//fudge factor to allow for upload time, etc. (seconds, YMMV)
+    tmElements_t tm;
+    tm.Year = getValue(datetime, ':', 0).toInt() - YEAR_OFFSET;//offset from 1970, since year is stored in uint8_t        
+    tm.Month = getValue(datetime, ':', 1).toInt();
+    tm.Day = getValue(datetime, ':', 2).toInt();
+    tm.Hour = getValue(datetime, ':', 3).toInt();
+    tm.Minute = getValue(datetime, ':', 4).toInt();
+    tm.Second = getValue(datetime, ':', 5).toInt();
 
-        time_t t = makeTime(tm) + FUDGE;
-        RTC.set(t);
+    time_t t = makeTime(tm) + FUDGE;
+    RTC.set(t);
 
-    }
-    //https://github.com/JChristensen/DS3232RTC
-    RTC.squareWave(SQWAVE_NONE); //disable square wave output
-    RTC.setAlarm(ALM2_EVERY_MINUTE, 0, 0, 0, 0); //alarm wakes up Watchy every minute
-    RTC.alarmInterrupt(ALARM_2, true); //enable alarm interrupt
-    RTC.read(currentTime);
+  }
+  //https://github.com/JChristensen/DS3232RTC
+  RTC.squareWave(SQWAVE_NONE); //disable square wave output
+  RTC.setAlarm(ALM2_EVERY_MINUTE, 0, 0, 0, 0); //alarm wakes up Watchy every minute
+  RTC.alarmInterrupt(ALARM_2, true); //enable alarm interrupt
+  RTC.read(currentTime);
 }
 
 /***************  BUTTON HANDLER ***************/
@@ -298,9 +305,7 @@ void Watchy::handleButtonPress(){
           showBuzz();
           break;          
         case 2:
-          #ifdef USING_ACCELEROMETER
-          //showAccelerometer();
-          #endif //USING_ACCELEROMETER
+          showCalendar();
           break;
         case 3:
           setTime();
@@ -316,12 +321,12 @@ void Watchy::handleButtonPress(){
           //showTemperature();
           #endif //USING_ACCELEROMETER
           break;
-	    case 7:
-		  stopWatch();
-		  break;
+        case 7:
+          stopWatch();
+          break;
         case 8:
-		  connectWiFiGUI();
-		  break;
+          connectWiFiGUI();
+          break;
         case 9:
           wifiOta();
           break;
@@ -330,9 +335,9 @@ void Watchy::handleButtonPress(){
       }
     }
     else if(guiState == APP_STATE){//if it's in the app, tell the app that the button was pressed
-        #ifdef DEBUG
-        Serial.println(menuIndex);
-        #endif
+      #ifdef DEBUG
+      Serial.println(menuIndex);
+      #endif
 
       switch(menuIndex)
       {
@@ -343,7 +348,7 @@ void Watchy::handleButtonPress(){
           //showBuzz();
           break;          
         case 2:
-          //showAccelerometer();    //disabled
+          //showCalendar();    
           break;
         case 3:
           //setTime();
@@ -417,7 +422,7 @@ void Watchy::handleButtonPress(){
           //showBuzz();
           break;          
         case 2:
-          //showAccelerometer();
+          showCalendar(UP_BTN_PIN);
           break;
         case 3:
           //setTime();
@@ -471,7 +476,7 @@ void Watchy::handleButtonPress(){
           //showBuzz();
           break;          
         case 2:
-          //showAccelerometer();
+          showCalendar(DOWN_BTN_PIN);
           break;
         case 3:
           //setTime();
@@ -503,41 +508,45 @@ void Watchy::handleButtonPress(){
 
 //scrolling menu by Alex Story
 void Watchy::showMenu(byte menuIndex, bool partialRefresh){
-    display.setFullWindow();
-    display.fillScreen(bgColour);
-    display.setFont(&FreeMonoBold9pt7b);
+  guiState = MAIN_MENU_STATE;  
+  display.setFullWindow();
+  display.fillScreen(bgColour);
+  display.setFont(&FreeMonoBold9pt7b);
 
-    int16_t  x1, y1;
-    uint16_t w, h;
-    int16_t yPos;
-    int16_t startPos=0;
+  int16_t  x1, y1;
+  uint16_t w, h;
+  int16_t yPos;
+  int16_t startPos=0;
 
-	//Code to move the menu if current selected index out of bounds
-	if(menuIndex+MENU_LENGTH>menuOptions)
-	{
-			startPos=(menuOptions-1)-(MENU_LENGTH-1);
-	}
-	else
-		{
-			startPos=menuIndex;
-			}
-    for(int i=startPos; i<MENU_LENGTH+startPos; i++){
-        yPos = 30+(MENU_HEIGHT*(i-startPos));
-        display.setCursor(0, yPos);
-        if(i == menuIndex){
-            display.getTextBounds(menuItems[i], 0, yPos, &x1, &y1, &w, &h);
-            display.fillRect(x1-1, y1-10, 200, h+15, fgColour);
-            display.setTextColor(bgColour);
-            display.println(menuItems[i]);      
-        }else{
-            display.setTextColor(fgColour);
-            display.println(menuItems[i]);
-        }   
-    }
-
-    display.display(partialRefresh, darkMode);
-
-    guiState = MAIN_MENU_STATE;    
+  //Code to move the menu if current selected index out of bounds
+  if(menuIndex+MENU_LENGTH>menuOptions){
+    startPos=(menuOptions-1)-(MENU_LENGTH-1);
+  }
+  else{
+    startPos=menuIndex;
+  }
+  for(int i=startPos; i<MENU_LENGTH+startPos; i++){
+    yPos = 30+(MENU_HEIGHT*(i-startPos));
+    display.setCursor(0, yPos);
+    if(i == menuIndex){
+      display.getTextBounds(menuItems[i], 0, yPos, &x1, &y1, &w, &h);
+      display.fillRect(x1-1, y1-10, 200, h+15, fgColour);
+      display.setTextColor(bgColour);
+      display.println(menuItems[i]);      
+    }else{
+      display.setTextColor(fgColour);
+      display.println(menuItems[i]);
+    }   
+  }
+  #ifdef DEBUG_TIMING
+  Serial.print("Start drawing menu: ");
+  Serial.println(millis());
+  #endif //DEBUG_TIMING
+  display.display(partialRefresh, darkMode);
+  #ifdef DEBUG_TIMING
+  Serial.print("End drawing menu: ");
+  Serial.println(millis());
+  #endif //DEBUG_TIMING  
 }   //showMenu
 
 //HELPER FUNCTIONS
@@ -564,12 +573,20 @@ void Watchy::vibMotor(uint8_t intervalMs, uint8_t length){
 void Watchy::showWatchFace(bool partialRefresh){
     display.setFullWindow();
     drawWatchFace();
+    #ifdef DEBUG_TIMING
+    Serial.print("Start drawing watch face: ");
+    Serial.println(millis());
+    #endif //DEBUG_TIMING
     display.display(partialRefresh, darkMode); //partial refresh
+    #ifdef DEBUG_TIMING
+    Serial.print("End drawing watch face: ");
+    Serial.println(millis());
+    #endif //DEBUG_TIMING
     guiState = WATCHFACE_STATE;
 }
 
-void Watchy::drawWatchFace(){
-    display.setFont(&DSEG7_Classic_Bold_53);
+void Watchy::drawWatchFace(){   //placeholder
+    display.setFont(&FreeMonoBold9pt7b);
     display.setCursor(5, 53+60);
     if(currentTime.Hour < 10){
         display.print("0");
@@ -592,8 +609,8 @@ void Watchy::drawWatchFace(){
  */
 weatherData Watchy::getWeatherData(bool online){
     if(online){
-        if(weatherIntervalCounter >= WEATHER_UPDATE_INTERVAL){ //only update if WEATHER_UPDATE_INTERVAL has elapsed i.e. 30 minutes
-            if(initWiFi()){//Use Weather API for live data if WiFi is connected
+        // if(weatherIntervalCounter >= WEATHER_UPDATE_INTERVAL){ //only update if WEATHER_UPDATE_INTERVAL has elapsed i.e. 30 minutes
+            // if(initWiFi()){//Use Weather API for live data if WiFi is connected
                 HTTPClient http;
                 http.setConnectTimeout(3000);//3 second max timeout
                 String weatherQueryURL = String(OPENWEATHERMAP_URL) + String(CITY_NAME) + String(",") + String(COUNTRY_CODE) + String("&units=") + String(TEMP_UNIT) + String("&appid=") + String(OPENWEATHERMAP_APIKEY);
@@ -601,6 +618,10 @@ weatherData Watchy::getWeatherData(bool online){
                 int httpResponseCode = http.GET();
                 if(httpResponseCode == 200) {
                     String payload = http.getString();
+                    #ifdef DEBUG
+                    Serial.print("Weather payload: ");
+                    Serial.println(payload);
+                    #endif
                     JSONVar responseObject = JSON.parse(payload);
                     currentWeather.temperature = int(responseObject["main"]["temp"]);
                     currentWeather.weatherConditionCode = int(responseObject["weather"][0]["id"]);            
@@ -609,20 +630,20 @@ weatherData Watchy::getWeatherData(bool online){
                 }
                 http.end();
                 //turn off radios
-                WiFi.mode(WIFI_OFF);
-                btStop();
-            }else{//No WiFi, use RTC Temperature
-                uint8_t temperature = RTC.temperature() / 4; //celsius
-                if(strcmp(TEMP_UNIT, "imperial") == 0){
-                    temperature = temperature * 9. / 5. + 32.; //fahrenheit
-                }
-                currentWeather.temperature = temperature;
-                currentWeather.weatherConditionCode = 800; //placeholder
-            }
+                // WiFi.mode(WIFI_OFF);
+                // btStop();
+            // }else{//No WiFi, use RTC Temperature
+            //     uint8_t temperature = RTC.temperature() / 4; //celsius
+            //     if(strcmp(TEMP_UNIT, "imperial") == 0){
+            //         temperature = temperature * 9. / 5. + 32.; //fahrenheit
+            //     }
+            //     currentWeather.temperature = temperature;
+            //     currentWeather.weatherConditionCode = 800; //placeholder
+            // }
             weatherIntervalCounter = 0;
-        }else{
-            weatherIntervalCounter++;
-        }
+        // }else{
+        //     weatherIntervalCounter++;
+        // }
     }
     else{
         int8_t temperature = RTC.temperature() / 4; //celsius. Seems like the conversion has some problems - gives me temps of 45deg
@@ -804,7 +825,7 @@ bool Watchy::initWiFi() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   #ifdef DEBUG
-  Serial.print("Connecting to WiFi ..");
+  Serial.println("Connecting to WiFi ..");
   #endif    //DEBUG
   unsigned long startMillis = millis();
   bool res = true;
@@ -814,10 +835,9 @@ bool Watchy::initWiFi() {
         break;
     }
     #ifdef DEBUG
-    Serial.println(WiFi.status());
+    //Serial.println(WiFi.status());
     #endif
-    //slow down CPU to save power while waiting. DISABLED BECAUSE ANY KIND OF CHANGES TO THE CPU SPEED HERE MAKES WIFI FAIL
-    //setCpuFrequencyMhz(80);
+    //setCpuFrequencyMhz(80); //DISABLED BECAUSE ANY KIND OF CHANGES TO THE CPU SPEED HERE MAKES WIFI FAIL
     delay(100);
   }
   return res;
@@ -841,6 +861,8 @@ void IRAM_ATTR ISRMenuBtnPress() {
     }
     
 }
+
+
 
 void IRAM_ATTR ISRBackBtnPress() {
     if(millis()-lastButtonInterrupt>BTN_DEBOUNCE_INTERVAL){

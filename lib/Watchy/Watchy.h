@@ -8,7 +8,7 @@
 #include <GxEPD2_BW.h>
 #include <Wire.h>
 #include <Fonts/FreeMonoBold9pt7b.h>
-#include "DSEG7_Classic_Bold_53.h"
+//#include "DIN_Black35pt7b.h"
 #include "BLE.h"
 #include <esp_wifi.h>
 #include "driver/adc.h"
@@ -16,12 +16,13 @@
 #include "config.h" 
 #include "sensitive_config.h"
 #include "watchy_batt_LUT.h"
-#include <ESPmDNS.h>
-#include <WiFiUdp.h>
+//#include <ESPmDNS.h>
+//#include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 #ifdef USING_ACCELEROMETER
 #include "bma.h"
 #endif //USING_ACCELEROMETER
+#include "calendar.h" //not ready
 //#include "Apps.h"     //not ready
 //#include "Weather.h"  //not ready
 
@@ -54,7 +55,8 @@ class Watchy {
         uint8_t getBatteryPercent(uint32_t vBatt);
         void vibMotor(uint8_t intervalMs = 100, uint8_t length = 20);
         bool initWiFi();
-        String syncNtpTime(bool usingGui = false);
+        void syncNtpTime();
+        String syncInternetStuff();
 
         void showMenu(byte menuIndex, bool partialRefresh);
         virtual void drawWatchFace(); //override this method for different watch faces
@@ -63,6 +65,7 @@ class Watchy {
         //apps
         void showStats(uint8_t btnPin = 0);
         void showBuzz();
+        void showCalendar(uint8_t btnPin = 0);
         void connectWiFiGUI();
         void stopWatch(uint8_t btnPin = 0);
         void setDarkMode(uint8_t btnPin = 0);
@@ -104,21 +107,16 @@ extern RTC_DATA_ATTR bool darkMode;
 extern RTC_DATA_ATTR bool fgColour; 
 extern RTC_DATA_ATTR bool bgColour;
 extern RTC_DATA_ATTR uint8_t lowBatt;  
-extern RTC_DATA_ATTR bool powerSaver; //will be a user toggleable
-extern RTC_DATA_ATTR bool hourlyTimeUpdate;
-extern RTC_DATA_ATTR time_t lastNtpSync;
 extern RTC_DATA_ATTR bool lastNtpSyncSuccess;
-extern RTC_DATA_ATTR time_t bootTime;
+extern RTC_DATA_ATTR bool lastCalendarSyncSuccess;
+
 #ifdef USING_ACCELEROMETER
 extern RTC_DATA_ATTR BMA423 sensor;
 #endif //USING_ACCELEROMETER
-//for stopwatch
-extern RTC_DATA_ATTR unsigned long finalTimeElapsed;
-extern bool stopBtnPressed;
-extern unsigned long stopWatchEndMillis;
 
 
 
+// for M09 screen
 //extern RTC_DATA_ATTR uint8_t _buffer[(200/8) * 200];
 
 #endif

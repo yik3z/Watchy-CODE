@@ -1,7 +1,7 @@
 
-#include "Watchy_7_SEG.h"
+#include "Watchface_DIN.h"
 
-Watchy7SEG watchy;
+Watchface_DIN watchy;
 
 void setup(){
   watchy.init();
