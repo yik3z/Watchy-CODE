@@ -104,9 +104,9 @@ bool fetchCalendar(){
         for(int i = 0; i<CALENDAR_EVENT_TITLE_LENGTH;i++){
           calEnt[line].calTitle[i] = strBuffer[i];
         }
-        if(strBuffer.length()>CALENDAR_EVENT_TITLE_LENGTH){
-          calEnt[line].calTitle[CALENDAR_EVENT_TITLE_LENGTH] = '.';
-        }
+        // if(strBuffer.length()>CALENDAR_EVENT_TITLE_LENGTH){            //disabled printout of '.' for events that overflow
+        //   calEnt[line].calTitle[CALENDAR_EVENT_TITLE_LENGTH] = '.';
+        // }
         #ifdef DEBUG_CALENDAR
         for(int j=0; j<CALENDAR_EVENT_TITLE_LENGTH+1;j++){  //not sure if this works
           Serial.print(calEnt[line].calTitle[j]);

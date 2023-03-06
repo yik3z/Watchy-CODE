@@ -285,12 +285,12 @@ void Watchy::showCalendar(uint8_t btnPin){
 		
 		// Print event title
 		display.setCursor(x, y+15);
-		for(int j=0; j<CALENDAR_EVENT_TITLE_LENGTH+1;j++){
+		for(int j=0; j<CALENDAR_EVENT_TITLE_LENGTH;j++){
 			if(calEnt[i].calTitle[j]==NULL){
-					#ifdef DEBUG_CALENDAR
-					Serial.println("Null character found, breaking print loop");
-					#endif
-					break;
+        #ifdef DEBUG_CALENDAR
+        Serial.println("Null character found, breaking print loop");
+        #endif
+        break;
 			}
 			display.print(calEnt[i].calTitle[j]);
 		}
