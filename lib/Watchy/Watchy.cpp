@@ -1,7 +1,5 @@
 #include "Watchy.h"
 
-//TODO: change display code back to max cpu speed, because it slows things
-
 DS3232RTC Watchy::RTC(false); 
 GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> Watchy::display(GxEPD2_154_D67(CS, DC, RESET, BUSY));
 
@@ -86,8 +84,17 @@ void Watchy::init(String datetime){
     #endif //DEBUG
 
     Wire.begin(SDA, SCL); //init i2c
+
+    // #ifdef DEBUG_TIMING
+    // Serial.println("wire begun: " + String(millis()));
+    // #endif //DEBUG_TIMING
+
     display.init(0, false); //_initial_refresh to false to prevent full update on init
-    
+
+    // #ifdef DEBUG_TIMING
+    // Serial.println("display init'd: " + String(millis()));
+    // #endif //DEBUG_TIMING
+
     //critical battery mode
     if(lowBatt == 2){   
         if(!hourlyTimeUpdate){
@@ -136,21 +143,21 @@ void Watchy::init(String datetime){
             if((hourlyTimeUpdate == 0) && (currentTime.Hour >= NIGHT_HOURS_START) && (currentTime.Hour < NIGHT_HOURS_END)){  //set to update every hour from NIGHT_HOURS_START onwards //
                 RTC.setAlarm(ALM2_MATCH_MINUTES, 0, 0, 0, 0);   //set RTC alarm to hourly (0th minute of the hour)
                 hourlyTimeUpdate = 1;
-                #ifdef DEBUG
+                #ifdef DEBUG_POWERSAVER
                 Serial.print("hourlyTimeUpdate: ");
                 Serial.println(hourlyTimeUpdate);
                 Serial.println("ALM2_MATCH_MINUTES: 0");
-                #endif  //DEBUG
+                #endif  //DEBUG_POWERSAVER
             }
             else if((hourlyTimeUpdate == 1) && (currentTime.Hour >= NIGHT_HOURS_END)){  //set to update every minute from 7:00am onwards 
           //else if(currentTime.Hour == 7 && currentTime.Minute == 0){ 
                 RTC.setAlarm(ALM2_EVERY_MINUTE, 0, 0, 0, 0);  //set alarm back to 
                 hourlyTimeUpdate = 0; 
-                #ifdef DEBUG
+                #ifdef DEBUG_POWERSAVER
                 Serial.print("hourlyTimeUpdate: ");
                 Serial.println(hourlyTimeUpdate);
                 Serial.println("ALM2_EVERY_MINUTE");
-                #endif  //DEBUG
+                #endif  //DEBUG_POWERSAVER
             #endif  //NIGHT_HOURLY_TIME_UPDATE
             }
             break;
@@ -173,107 +180,9 @@ void Watchy::init(String datetime){
             showWatchFace(false); //full update on reset
             break;
     }
-    #ifdef DEBUG_TIMING
-    Serial.println("Sleep: " + String(millis()));
-    #endif //DEBUG_TIMING
+
     }
     deepSleep();
-}
-//    if((internetSyncCounter >= INTERNET_SYNC_INTERVAL)or(usingGui==true)){  
-String Watchy::syncInternetStuff(){
-  String SSID = "";
-  bool connected = initWiFi(); //check
-  if(connected) { 
-    SSID = WiFi.SSID();
-    syncNtpTime();
-    fetchCalendar();
-    //getWeatherData(true); //works alone
-    #ifdef DEBUG
-    //Serial.print("Internet connectivity test: ");
-    //Serial.println(internetWorks());
-    #endif
-    
-    internetSyncCounter = 0;  //reset the counter
-  }
-  WiFi.mode(WIFI_OFF); // shut down the radio to save power
-  btStop();
-  esp_wifi_stop(); 
-  return SSID;
-}
-
-
-/*!
- * @brief NTP time sync. Inspired by etwasmitbaum's Watchy code: https://github.com/etwasmitbaum/Watchy/
- *
- * @param[in] usingGui:  Whether this is a scheduled or forced (GUI) sync. Dafault false
- *
- * @returns String of SSID connected. If failed, returns blank string ""
- *  
- */
-void Watchy::syncNtpTime(){ 
-  //attempt to sync
-  lastNtpSyncSuccess = false;
-  struct tm timeinfo;
-
-  configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);  //get NTP Time
-  delay(4000); //delay 4 secods so configTime can finish recieving the time from the internet
-  getLocalTime(&timeinfo);
-  // convert NTP time into proper format
-  currentTime.Month = timeinfo.tm_mon + 1;// 0-11 based month so we have to add 1
-  currentTime.Day = timeinfo.tm_mday;
-  currentTime.Year = timeinfo.tm_year + 1900 - YEAR_OFFSET;//offset from 1970, since year is stored in uint8_t
-  currentTime.Hour = timeinfo.tm_hour;
-  currentTime.Minute = timeinfo.tm_min;
-  currentTime.Second = timeinfo.tm_sec;
-  lastNtpSync = makeTime(currentTime);
-  RTC.set(lastNtpSync);
-  lastNtpSyncSuccess = true;
-  #ifdef DEBUG
-  Serial.println("Time Synced and set"); //debug
-  #endif //DEBUG
-}
-
-/*
- * Shuts down everything and puts the ESP32 to deepsleep:
- *
- * - turns on ext0, ext1 wakeups
- * - turns off ADCs (save power)
- * - sets display to hibernate
- *
- */
-void Watchy::deepSleep(){ //TODO: set all pins to inputs to save power??
-  display.hibernate();
-  #ifndef ESP_RTC
-  esp_sleep_enable_ext0_wakeup(RTC_PIN, 0); //enable deep sleep wake on RTC interrupt
-  #endif  
-  #ifdef ESP_RTC
-  esp_sleep_enable_timer_wakeup(60000000);
-  #endif 
-  esp_sleep_enable_ext1_wakeup(BTN_PIN_MASK, ESP_EXT1_WAKEUP_ANY_HIGH); //enable deep sleep wake on button press
-  adc_power_off();
-  esp_deep_sleep_start();
-}
-
-void Watchy::_rtcConfig(String datetime){
-  if(datetime != NULL){
-    const time_t FUDGE(30);//fudge factor to allow for upload time, etc. (seconds, YMMV)
-    tmElements_t tm;
-    tm.Year = getValue(datetime, ':', 0).toInt() - YEAR_OFFSET;//offset from 1970, since year is stored in uint8_t        
-    tm.Month = getValue(datetime, ':', 1).toInt();
-    tm.Day = getValue(datetime, ':', 2).toInt();
-    tm.Hour = getValue(datetime, ':', 3).toInt();
-    tm.Minute = getValue(datetime, ':', 4).toInt();
-    tm.Second = getValue(datetime, ':', 5).toInt();
-
-    time_t t = makeTime(tm) + FUDGE;
-    RTC.set(t);
-
-  }
-  //https://github.com/JChristensen/DS3232RTC
-  RTC.squareWave(SQWAVE_NONE); //disable square wave output
-  RTC.setAlarm(ALM2_EVERY_MINUTE, 0, 0, 0, 0); //alarm wakes up Watchy every minute
-  RTC.alarmInterrupt(ALARM_2, true); //enable alarm interrupt
-  RTC.read(currentTime);
 }
 
 /***************  BUTTON HANDLER ***************/
@@ -551,6 +460,101 @@ void Watchy::showMenu(byte menuIndex, bool partialRefresh){
 
 //HELPER FUNCTIONS
 
+/*
+ * Shuts down everything and puts the ESP32 to deepsleep:
+ *
+ * - turns on ext0, ext1 wakeups
+ * - turns off ADCs (save power)
+ * - sets display to hibernate
+ *
+ */
+void Watchy::deepSleep(){ //TODO: set all pins to inputs to save power??
+  #ifdef DEBUG_TIMING
+  Serial.println("Hibernate Display: " + String(millis()));
+  #endif //DEBUG_TIMING
+
+  display.hibernate();
+  esp_sleep_enable_ext0_wakeup(RTC_PIN, 0); //enable deep sleep wake on RTC interrupt
+  esp_sleep_enable_ext1_wakeup(BTN_PIN_MASK, ESP_EXT1_WAKEUP_ANY_HIGH); //enable deep sleep wake on button press
+  adc_power_off();
+
+  #ifdef DEBUG_TIMING
+  Serial.println("Sleep: " + String(millis()));
+  #endif //DEBUG_TIMING
+
+  esp_deep_sleep_start();
+}
+
+void Watchy::_rtcConfig(String datetime){
+  if(datetime != NULL){
+    const time_t FUDGE(30);//fudge factor to allow for upload time, etc. (seconds, YMMV)
+    tmElements_t tm;
+    tm.Year = getValue(datetime, ':', 0).toInt() - YEAR_OFFSET;//offset from 1970, since year is stored in uint8_t        
+    tm.Month = getValue(datetime, ':', 1).toInt();
+    tm.Day = getValue(datetime, ':', 2).toInt();
+    tm.Hour = getValue(datetime, ':', 3).toInt();
+    tm.Minute = getValue(datetime, ':', 4).toInt();
+    tm.Second = getValue(datetime, ':', 5).toInt();
+
+    time_t t = makeTime(tm) + FUDGE;
+    RTC.set(t);
+
+  }
+  //https://github.com/JChristensen/DS3232RTC
+  RTC.squareWave(SQWAVE_NONE); //disable square wave output
+  RTC.setAlarm(ALM2_EVERY_MINUTE, 0, 0, 0, 0); //alarm wakes up Watchy every minute
+  RTC.alarmInterrupt(ALARM_2, true); //enable alarm interrupt
+  RTC.read(currentTime);
+}
+ 
+String Watchy::syncInternetStuff(){
+  String SSID = "";
+  bool connected = initWiFi();
+  if(connected) { 
+    SSID = WiFi.SSID();
+    syncNtpTime();
+    fetchCalendar();
+    //getWeatherData(true); //works alone
+    #ifdef DEBUG
+    //Serial.print("Internet connectivity test: ");
+    //Serial.println(internetWorks());
+    #endif
+    
+    internetSyncCounter = 0;  //reset the counter
+  }
+  WiFi.mode(WIFI_OFF); // shut down the radio to save power
+  btStop();
+  esp_wifi_stop(); 
+  return SSID;
+}
+
+/*!
+ * @brief NTP time sync. Inspired by etwasmitbaum's Watchy code: https://github.com/etwasmitbaum/Watchy/
+ *  
+ */
+void Watchy::syncNtpTime(){ 
+  //attempt to sync
+  lastNtpSyncSuccess = false;
+  struct tm timeinfo;
+
+  configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);  //get NTP Time
+  delay(4000); //delay 4 secods so configTime can finish recieving the time from the internet
+  getLocalTime(&timeinfo);
+  // convert NTP time into proper format
+  currentTime.Month = timeinfo.tm_mon + 1;// 0-11 based month so we have to add 1
+  currentTime.Day = timeinfo.tm_mday;
+  currentTime.Year = timeinfo.tm_year + 1900 - YEAR_OFFSET;//offset from 1970, since year is stored in uint8_t
+  currentTime.Hour = timeinfo.tm_hour;
+  currentTime.Minute = timeinfo.tm_min;
+  currentTime.Second = timeinfo.tm_sec;
+  lastNtpSync = makeTime(currentTime);
+  RTC.set(lastNtpSync);
+  lastNtpSyncSuccess = true;
+  #ifdef DEBUG
+  Serial.println("Time Synced and set"); //debug
+  #endif //DEBUG
+}
+
 /*!
  * @brief Vibrates motor
  *
@@ -584,6 +588,7 @@ void Watchy::showWatchFace(bool partialRefresh){
     #endif //DEBUG_TIMING
     guiState = WATCHFACE_STATE;
 }
+
 
 void Watchy::drawWatchFace(){   //placeholder
     display.setFont(&FreeMonoBold9pt7b);
@@ -711,6 +716,7 @@ uint8_t Watchy::getBatteryPercent(uint32_t vBatt){
     return (uint8_t)percentage;
 } 
 
+// ISR for stopwatch buttonpress
 void IRAM_ATTR ISRStopwatchEnd() {
     stopWatchEndMillis = millis();
     stopBtnPressed = true;
@@ -821,6 +827,7 @@ void Watchy::_bmaConfig(){
     #endif //USING_ACCELEROMETER
 }
 
+// Connects to the WiFi SSID defined in config_sensitive.h
 bool Watchy::initWiFi() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -843,6 +850,7 @@ bool Watchy::initWiFi() {
   return res;
 }
 
+// Attached intterupts to the 4 buttons. Called when watchy wakes up on a buttonpress, to listen for more button presses
 void Watchy::setISRs(){
     attachInterrupt(MENU_BTN_PIN, ISRMenuBtnPress, RISING);
     attachInterrupt(BACK_BTN_PIN, ISRBackBtnPress, RISING);
@@ -861,8 +869,6 @@ void IRAM_ATTR ISRMenuBtnPress() {
     }
     
 }
-
-
 
 void IRAM_ATTR ISRBackBtnPress() {
     if(millis()-lastButtonInterrupt>BTN_DEBOUNCE_INTERVAL){

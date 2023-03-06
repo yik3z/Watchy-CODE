@@ -12,6 +12,8 @@
 #ifndef _GxEPD2_H_
 #define _GxEPD2_H_
 
+#define DEBUG_TIMING    //enable printing of timinings (millis())
+
 #include <Arduino.h>
 #include <SPI.h>
 

@@ -28,7 +28,7 @@ GxEPD2_EPD::GxEPD2_EPD(int8_t cs, int8_t dc, int8_t rst, int8_t busy, int8_t bus
   _power_is_on = false;
   _using_partial_mode = false;
   _hibernating = false;
-  _reset_duration = 20;
+  _reset_duration = 10; //changed, was 20
 }
 
 void GxEPD2_EPD::init(uint32_t serial_diag_bitrate)
@@ -60,12 +60,26 @@ void GxEPD2_EPD::init(uint32_t serial_diag_bitrate, bool initial, uint16_t reset
     digitalWrite(_dc, HIGH);
     pinMode(_dc, OUTPUT);
   }
+  if (!_pulldown_rst_mode &&_rst >= 0)
+  {
+    digitalWrite(_rst, HIGH);
+    pinMode(_rst, OUTPUT);
+  }
+  #ifdef DEBUG_TIMING
+  Serial.println("pre reset(): " + String(millis()));
+  #endif //DEBUG_TIMING
   _reset();
+  #ifdef DEBUG_TIMING
+  Serial.println("post reset(): " + String(millis()));
+  #endif //DEBUG_TIMING
   if (_busy >= 0)
   {
     pinMode(_busy, INPUT);
   }
   SPI.begin();
+  #ifdef DEBUG_TIMING
+  Serial.println("spi begun, display init'd: " + String(millis()));
+  #endif //DEBUG_TIMING
 }
 
 void GxEPD2_EPD::_reset()
@@ -82,14 +96,16 @@ void GxEPD2_EPD::_reset()
     }
     else
     {
-      digitalWrite(_rst, HIGH);
-      pinMode(_rst, OUTPUT);
-      delay(20);
+      //delay(10);    //removed; it's not there in the sample sketch
       digitalWrite(_rst, LOW);
       delay(_reset_duration);
       digitalWrite(_rst, HIGH);
-      delay(200);
+      delay(_reset_duration); //changed, was 200
     }
+    // #ifdef DEBUG_TIMING
+    // Serial.println("start waitwhilebz hw reset: " + String(millis()));
+    // #endif //DEBUG_TIMING
+    _waitWhileBusy("_reset",10);
     _hibernating = false;
   }
 }

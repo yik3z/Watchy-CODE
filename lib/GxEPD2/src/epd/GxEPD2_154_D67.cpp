@@ -272,13 +272,15 @@ void GxEPD2_154_D67::powerOff()
   _PowerOff();
 }
 
+//is actually deep sleep in the manufacturer's documentation
 void GxEPD2_154_D67::hibernate()
 {
-  _PowerOff();
+  //_PowerOff();  //removed, seems like it's wrong code anyway
   if (_rst >= 0)
   {
     _writeCommand(0x10); // deep sleep mode
-    _writeData(0x1);     // enter deep sleep
+    _writeData(0x1);     // enter deep sleep (mode 1, RAM is retained)
+    //_waitWhileBusy("_PowerOff", power_off_time);  //disabled since watch is also going to sleep and won't interact with display (not sure if a quick wake might cause issues)
     _hibernating = true;
   }
 }
@@ -314,14 +316,16 @@ void GxEPD2_154_D67::_PowerOn()
   _power_is_on = true;
 }
 
-void GxEPD2_154_D67::_PowerOff()
+//seems all wrong...disabled becuase it seems to not do anything
+void GxEPD2_154_D67::_PowerOff()  
 {
   if (_power_is_on)
   {
-    _writeCommand(0x22);
-    _writeData(0x83);
-    _writeCommand(0x20);
-    _waitWhileBusy("_PowerOff", power_off_time);
+    //_writeCommand(0x22);
+    //_writeData(0x83);
+    //_writeCommand(0x20);
+
+    //_waitWhileBusy("_PowerOff", power_off_time);
   }
   _power_is_on = false;
   _using_partial_mode = false;
@@ -330,7 +334,6 @@ void GxEPD2_154_D67::_PowerOff()
 void GxEPD2_154_D67::_InitDisplay()
 {
   if (_hibernating) _reset();
-  delay(10); // 10ms according to specs
   _writeCommand(0x12); // soft reset
   delay(10); // 10ms according to specs
   _writeCommand(0x01); // Driver output control
@@ -339,7 +342,6 @@ void GxEPD2_154_D67::_InitDisplay()
   _writeData(0x00);
   _writeCommand(0x3C); // BorderWavefrom
   _writeData(borderColour ? 0x02 : 0x05);    //0x05 for white or 0x02 for black border
-  //_writeData(0x02);    //for testing: 0x05 for white or 0x03 for black border
   _writeCommand(0x18); // Read built-in temperature sensor
   _writeData(0x80);
   _setPartialRamArea(0, 0, WIDTH, HEIGHT);
@@ -348,31 +350,41 @@ void GxEPD2_154_D67::_InitDisplay()
 void GxEPD2_154_D67::_Init_Full()
 {
   _InitDisplay();
-  _PowerOn();
+  //_PowerOn();
   _using_partial_mode = false;
 }
 
 void GxEPD2_154_D67::_Init_Part()
 {
   _InitDisplay();
-  _PowerOn();
+  //_PowerOn();
   _using_partial_mode = true;
 }
 
 void GxEPD2_154_D67::_Update_Full()
 {
-  
+  #ifdef DEBUG_TIMING
+  Serial.println("start updatefull: " + String(millis()));
+  #endif //DEBUG_TIMING
   _writeCommand(0x22);
-  _writeData(0xf4);
+  _writeData(0xf4); //was 0xf4, supposed to be 0xf7??
   _writeCommand(0x20);
   _waitWhileBusy("_Update_Full", full_refresh_time);
-  
+  #ifdef DEBUG_TIMING
+  Serial.println("end updatefull: " + String(millis()));
+  #endif //DEBUG_TIMING
 }
 
 void GxEPD2_154_D67::_Update_Part()
 {
+  #ifdef DEBUG_TIMING
+  Serial.println("start updatepart: " + String(millis()));
+  #endif //DEBUG_TIMING
   _writeCommand(0x22);
-  _writeData(0xfc);
+  _writeData(0xfc);   //was 0xfc, supposd to be 0xff??
   _writeCommand(0x20);
   _waitWhileBusy("_Update_Part", partial_refresh_time);  
+  #ifdef DEBUG_TIMING
+  Serial.println("end updatepart: " + String(millis()));
+  #endif //DEBUG_TIMING
 }

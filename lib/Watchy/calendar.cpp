@@ -42,8 +42,11 @@ bool fetchCalendar(){
     payload = http.getString();
     lastCalendarSyncSuccess = true;
     #ifdef DEBUG
+    Serial.print("Calendar sync success");
+    #endif //DEBUG
+    #ifdef DEBUG_CALENDAR
     Serial.print("Calendar payload: "); Serial.println(payload);
-    #endif
+    #endif //DEBUG_CALENDAR
   } else {
     http.end();
     return lastCalendarSyncSuccess;
@@ -60,9 +63,9 @@ bool fetchCalendar(){
   int line = 0; //number of lines in the calendar (to be computed)
   indexFrom = payload.lastIndexOf("\n") + 1;
 
-  #ifdef DEBUG
+  #ifdef DEBUG_CALENDAR
   Serial.println("Calendar entries:");
-  #endif
+  #endif //DEBUG_CALENDAR
 
   // Fill calendarEntries with entries from the get-request
   while (indexTo>=0 && line<CALENDAR_ENTRY_COUNT) {
@@ -78,7 +81,7 @@ bool fetchCalendar(){
 			Serial.print(" | strBuffer: ");
       Serial.print(strBuffer);
     	Serial.print(" | Data: ");
-      #endif      
+      #endif //DEBUG_CALENDAR
       indexFrom = indexTo + 1;
 
       if(field == 1) {
@@ -97,7 +100,7 @@ bool fetchCalendar(){
         Serial.print(calEnt[line].calDate.Day);
 				Serial.println(calEnt[line].calDate.Month);
         //Serial.print(", ");
-        #endif
+        #endif //DEBUG_CALENDAR
       } else if(field == 2) {
         // Set entry title
         //convert str to char array bc RTC memory cannot store str
@@ -112,16 +115,16 @@ bool fetchCalendar(){
           Serial.print(calEnt[line].calTitle[j]);
         } 
         Serial.println();
-        #endif
+        #endif //DEBUG_CALENDAR
       } else if(field == 3) {
         // Set all day flag
 				calEnt[line].allDay = (strBuffer[0]=='t');	//match first letter of "true"
-        #ifdef DEBUG
+        #ifdef DEBUG_CALENDAR
         Serial.print("All day flag: ");
 				Serial.print(strBuffer);
 				Serial.print(" | allDay Variable: ");
 				Serial.println(calEnt[line].allDay);
-				#endif
+				#endif //DEBUG_CALENDAR
 				field = 0;
 				line++;
 			}

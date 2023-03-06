@@ -33,7 +33,7 @@ class GxEPD2_EPD
     GxEPD2_EPD(int8_t cs, int8_t dc, int8_t rst, int8_t busy, int8_t busy_level, uint32_t busy_timeout,
                uint16_t w, uint16_t h, GxEPD2::Panel p, bool c, bool pu, bool fpu);
     virtual void init(uint32_t serial_diag_bitrate = 0); // serial_diag_bitrate = 0 : disabled
-    virtual void init(uint32_t serial_diag_bitrate, bool initial, uint16_t reset_duration = 20, bool pulldown_rst_mode = false);
+    virtual void init(uint32_t serial_diag_bitrate, bool initial, uint16_t reset_duration = 10, bool pulldown_rst_mode = false);
     //  Support for Bitmaps (Sprites) to Controller Buffer and to Screen
     virtual void clearScreen(uint8_t value) = 0; // init controller memory and screen (default white)
     virtual void writeScreenBuffer(uint8_t value) = 0; // init controller memory (default white)
@@ -80,7 +80,7 @@ class GxEPD2_EPD
     virtual void refresh(bool partial_update_mode = false) = 0; // screen refresh from controller memory to full screen
     virtual void refresh(int16_t x, int16_t y, int16_t w, int16_t h) = 0; // screen refresh from controller memory, partial screen
     virtual void powerOff() = 0; // turns off generation of panel driving voltages, avoids screen fading over time
-    virtual void hibernate() = 0; // turns powerOff() and sets controller to deep sleep for minimum power use, ONLY if wakeable by RST (rst >= 0)
+    virtual void hibernate() = 0; // turns powerOff() (not necessarry, disabled) and sets controller to deep sleep for minimum power use, ONLY if wakeable by RST (rst >= 0)
     virtual void setPaged() {}; // for GxEPD2_154c paged workaround
     static inline uint16_t gx_uint16_min(uint16_t a, uint16_t b)
     {
