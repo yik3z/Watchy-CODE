@@ -7,6 +7,8 @@
 #include "config.h"
 #include "Watchy.h"
 
+#define DONT_SAVE_BIRTHDAYS                 // flag to skip saving birthdays into calendar  
+
 #define CALENDAR_ENTRY_COUNT            10  // max number of entries in the calendar
 #define CALENDAR_MAX_PAGES              4   // max number of pages in the calendar (Assuming 3 entries per page), hardcoded for now
 #define CALENDAR_EVENT_TITLE_LENGTH     30  // max length for the title of an event. This may take up A LOT of RTC memory lol

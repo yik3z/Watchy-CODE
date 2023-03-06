@@ -126,8 +126,6 @@ void Watchy::stopWatch(uint8_t btnPin){
         uint16_t ms = finalTimeElapsed % 1000;
         
         display.fillScreen(bgColour);
-        //display.setFont(&FreeMonoBold9pt7b);
-        //display.setTextColor(fgColour);  //TESTING
         display.setCursor(52, 100);
         if(minutes<10){display.print("0");}
         display.print(minutes);

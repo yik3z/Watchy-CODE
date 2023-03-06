@@ -1,9 +1,11 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-//#define DEBUG             //enable printing of general debug messages
-//#define DEBUG_CALENDAR    //enable printing of calendar debug messages
-//#define DEBUG_TIMING      //enable printing of timinings (millis())
+#define DEBUG             //enable printing of general debug messages
+  #ifdef DEBUG
+  //#define DEBUG_CALENDAR    //enable printing of calendar debug messages
+  #define DEBUG_TIMING      //enable printing of timinings (millis())
+  #endif //DEBUG
 #define INCLUDE_WEATHER
 
 //pins

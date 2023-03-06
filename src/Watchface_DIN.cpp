@@ -2,11 +2,9 @@
 
 const uint8_t BATTERY_BAR_HEIGHT = 4; 
 const uint8_t DATE_TIME_X_0 = 15;
-const uint8_t DARK_TIME_Y_0 = 110; 
-const uint8_t LIGHT_TIME_Y_0 = 100; 
+const uint8_t DATE_TIME_Y_0 = 100; 
 const uint8_t DATE_X_0 = 137; 
-const uint8_t DARK_DATE_Y_0 = 144;
-const uint8_t LIGHT_DATE_Y_0 = 134;
+const uint8_t DATE_Y_0 = 134;
 const uint8_t SPLITTER_LENGTH = 165;
 const uint8_t TEMPERATURE_X_0 = 145;
 const uint8_t TEMPERATURE_Y_0 = 175;
@@ -36,50 +34,48 @@ void Watchface_DIN::drawWatchFace(){
 }
 
 void Watchface_DIN::drawTime(){
-    display.setFont(&DIN_Black35pt7b);
-    if(darkMode){
-        display.setCursor(DATE_TIME_X_0 - 5, DARK_TIME_Y_0);
-    } else {
-        display.setCursor(DATE_TIME_X_0 - 5, LIGHT_TIME_Y_0);
-    }
+  display.setFont(&DIN_Black35pt7b);
+  display.setCursor(DATE_TIME_X_0 - 5, DATE_TIME_Y_0);
+  if(currentTime.Hour < 10){
+    display.print("0");
+  }
+  display.print(currentTime.Hour);
+  display.print(":");
+  if(hourlyTimeUpdate){ // print :xx for mins since the time updates only once an hour
+    display.println("xx");  
+  } 
+  else{
+    if(currentTime.Minute < 10){
+      display.print("0");
+    }  
+    display.println(currentTime.Minute);  
+  }
+  // show actual time on buttonpress during hourlytimeupdate above the :xx time
+  if(hourlyTimeUpdate && wakeup_reason == ESP_SLEEP_WAKEUP_EXT1){ // button press during hourly time update
+    display.setFont(&DIN_Medium10pt7b);
+    display.setCursor(80, 43);
     if(currentTime.Hour < 10){
-        display.print("0");
+      display.print("0");
     }
     display.print(currentTime.Hour);
     display.print(":");
-    if(hourlyTimeUpdate && wakeup_reason == ESP_SLEEP_WAKEUP_EXT0){ //is hourly time update, it was an RTC (scheduled) wakeup
-        display.println("xx");  
-    } 
-    else{
-        if(currentTime.Minute < 10){
-            display.print("0");
-        }  
-        display.println(currentTime.Minute);  
-    }
+    if(currentTime.Minute < 10){
+      display.print("0");
+    }  
+    display.println(currentTime.Minute);
+  }
 }
 
 void Watchface_DIN::drawDate(){
 	//draw divider line
-	if(darkMode){
-			display.fillRect(DATE_TIME_X_0, DARK_TIME_Y_0 + 10, SPLITTER_LENGTH, 3, fgColour);
-	} else{
-			display.fillRect(DATE_TIME_X_0, LIGHT_TIME_Y_0 + 10, SPLITTER_LENGTH, 3, fgColour);
-	}
+	display.fillRect(DATE_TIME_X_0, DATE_TIME_Y_0 + 10, SPLITTER_LENGTH, 3, fgColour);
 
-//draw day, date
+  //draw day, date
 	display.setFont(&DIN_Medium10pt7b);
 	String dayOfWeek = dayStr(currentTime.Wday);
-	if(darkMode){
-			display.setCursor(DATE_TIME_X_0, DARK_DATE_Y_0);
-	} else{
-			display.setCursor(DATE_TIME_X_0, LIGHT_DATE_Y_0);
-	}
+	display.setCursor(DATE_TIME_X_0, DATE_Y_0);
 	display.println(dayOfWeek);
-	if(darkMode){
-			display.setCursor(DATE_X_0, DARK_DATE_Y_0);
-	} else{
-			display.setCursor(DATE_X_0, LIGHT_DATE_Y_0);
-	}
+	display.setCursor(DATE_X_0, DATE_Y_0);
 	if(currentTime.Day < 10){
 	display.print("0");      
 	}     
@@ -97,7 +93,6 @@ void Watchface_DIN::drawDate(){
 }
 
 void Watchface_DIN::drawNextCalendarEvent(){
-
   //choose event to display
   int nextCalEvent = -1;
   for (int i=0;i<calendarLength;i++){
@@ -115,9 +110,17 @@ void Watchface_DIN::drawNextCalendarEvent(){
 	if (nextCalEvent==-1){														// no calendar events to display. Don't draw anything
 		return;
 	}
+	// print event title
+  display.setCursor(5, 170);
+  for(int j=0; j<17;j++){	// seems to print the first char after the end of the last one
+    if(calEnt[nextCalEvent].calTitle[j]==NULL){
+      break;
+    }
+    display.print(calEnt[nextCalEvent].calTitle[j]);
+  }
 	// print time of next event
   display.setFont(&FreeMonoBold9pt7b);
-  display.setCursor(5, 170);
+  display.setCursor(5, 185);
 	if(calEnt[nextCalEvent].calDate.Day < 10){
 	display.print("0");      
 	} 
@@ -138,16 +141,8 @@ void Watchface_DIN::drawNextCalendarEvent(){
 			display.print("0");      
 	}
 	display.print(calEnt[nextCalEvent].calDate.Minute);
-}
-	// print event title
-  display.setCursor(5, 185);
-    for(int j=0; j<17;j++){	// seems to print the first char after the end of the last one
-			if(calEnt[nextCalEvent].calTitle[j]==NULL){
-				break;
-			}
-			display.print(calEnt[nextCalEvent].calTitle[j]);
-		}
-	return;
+  }
+  return;
 }
 
 void Watchface_DIN::drawBatteryBar(){
@@ -165,7 +160,7 @@ void Watchface_DIN::drawBatteryBar(){
         percentage = 2808.3808 * pow(VBAT, 4) - 43560.9157 * pow(VBAT, 3) + 252848.5888 * pow(VBAT, 2) - 650767.4615 * VBAT + 626532.5703;
     }
     */
-    uint8_t batteryBarWidth = percentage * 2; //beacuse it's 200px wide lol
+    uint8_t batteryBarWidth = percentage * 2; // beacuse it's 200px wide lol
     
     display.fillRect(0, 0, batteryBarWidth, BATTERY_BAR_HEIGHT, fgColour);
 }
