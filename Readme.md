@@ -14,11 +14,12 @@
 - borders around the screen are syncronised to background colour. Based on findings from [peanutman and gewoon_maarten on discord](https://discord.com/channels/804832182006579270/808787590060048465/887013190616117288).
 
 ### Performance / Responsiveness
-- Removed floating point operations: Look up table (LUT) implemented to convert battery voltage to percentage
+This Watchy works slightly different from the original. With each interaction (buttonpress), watchy wakes, does its thing, and goes back to sleep ASAP. No waiting around with the CPU awake. (There's also an ISR to catch button presses while Watchy is "doing its thing") The only exceptions to this are some legacy functions like `setTime()` which stays awake while waiting for more inputs, and also waiting for the display to refresh.
 - Removed `display.init()` before each function. Is now called upon wake from sleep and `display.hibernate()` just before going to sleep.
 - Added interrupts to check for buttonpresses. `handleButtonPress()` loops until all button presses are cleared
 - Modified bootloader for faster wake from sleep (See [this guide](https://hackaday.io/project/174898-esp-now-weather-station/log/183782-bootloader-wake-time-improvements)).
   settings changed:
+
   *general*
    - flash speed=80MHz  
    - timers used for `gettimeofday` function set to `none`
@@ -30,10 +31,11 @@
    
    Flash mode `QIO` doesn't work :(
 
-   **Not extensively tested, but seems to work for now. I haven't timed it too. Use with a pinch of salt.**
-- Modified the display library (GxEPD) to reduce unnecessary wait times. A full loop (sleep>wake>sleep) is 300ms shorter now:
+   **Not extensively tested, but seems to work for now. Sleep+wake together take ~50ms (based on my janky testing).**
+   
+- Modified the display library (GxEPD) to reduce unnecessary wait times. A full loop (sleep>wake>sleep) is 300ms shorter now 🙂 :
 
-|  | Before (ms) | After (ms) 🙂 |
+|  | Before (ms) | After (ms) |
 | --- | --- | --- |
 | Partial Refresh | 894 | 592 |
 | Full refresh | 2637 | 2312 |
@@ -71,7 +73,7 @@ Here is the refresh broken down (for a partial update):
 - ~~CPU set to 80Mhz (in the hope of power saving)~~ 240MHz is actually faster (noticeable in the UI) so I'm keeping it to that. The CPU spends very little time awake anyway.
 - downclock CPU to 10MHz while waiting for screen to update.
 - disable initialisation of BMA423 - seems to save a lot of battery!
-- ~~`fast menu` used to force the code to wait for the timeout before entering sleep even when in an app. Changed it to only wait for the timeout when in the menu. Otherwise (i.e. in an app) enter sleep immediately~~ `fastmenu` **is not used anymore since the UI is much more responsive anyway.** No more waiting for timeouts :)
+- ~~`fast menu` used to force the code to wait for the timeout before entering sleep even when in an app. Changed it to only wait for the timeout when in the menu. Otherwise (i.e. in an app) enter sleep immediately~~ `fastmenu` **is not used anymore since the UI is much more responsive anyway.** No more waiting for timeouts - Watchy goes to sleep immediately :)
 - low/critical battery warning
 	- low batt can engage power saver mode. Watch updates time once an hour when battery is critical (<5%>)
 - battery bar
