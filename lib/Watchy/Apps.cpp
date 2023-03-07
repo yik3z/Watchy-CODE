@@ -478,10 +478,10 @@ void Watchy::setPowerSaver(uint8_t btnPin){ //does not do anything at the moment
 	display.setCursor(85, 100);
 	if(btnPin == DOWN_BTN_PIN){    //toggle power saver if button has been pressed
 		powerSaver = !powerSaver;
-		#ifdef DEBUG
+		#ifdef DEBUG_POWERSAVER
 		Serial.print("Power Saver: ");
 		Serial.println(powerSaver);  
-		#endif  //DEBUG
+		#endif  //DEBUG_POWERSAVER
 	}
 	#ifdef DEBUG
 	Serial.print("Button Pressed: ");

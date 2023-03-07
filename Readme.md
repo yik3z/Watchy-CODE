@@ -1,12 +1,16 @@
-# WATCHY WITH PlatformIO
+# WATCHY (with PlatformIO)
 
 ![Watchy](https://watchy.sqfmi.com/img/watchy_render.png)
 
 # Features (Working, at least -ish)
 
 ### UI
+
+![watchface](https://github.com/yik3z/Watchy-CODE/blob/main/others/pictures/watchface.jpg?raw=true)
 - watchface
     - `DIN Black` Font
+    - calendar events
+    - battery bar
 	- looks clean
 	- very wow
 - [scrolling menu](https://gitlab.com/astory024/watchy/-/blob/master/src/Watchy.cpp) by Alex Story
@@ -14,7 +18,7 @@
 - borders around the screen are syncronised to background colour. Based on findings from [peanutman and gewoon_maarten on discord](https://discord.com/channels/804832182006579270/808787590060048465/887013190616117288).
 
 ### Performance / Responsiveness
-This Watchy works slightly different from the original. With each interaction (buttonpress), watchy wakes, does its thing, and goes back to sleep ASAP. No waiting around with the CPU awake. (There's also an ISR to catch button presses while Watchy is "doing its thing") The only exceptions to this are some legacy functions like `setTime()` which stays awake while waiting for more inputs, and also waiting for the display to refresh.
+_This Watchy works slightly different from the original. With each interaction (buttonpress), watchy wakes, does its thing, and goes back to sleep ASAP. No waiting around with the CPU awake. (There's also an ISR to catch button presses while Watchy is "doing its thing") The only exceptions to this are some legacy functions like `setTime()` which stays awake while waiting for more inputs, and also waiting for the display to refresh._
 - Removed `display.init()` before each function. Is now called upon wake from sleep and `display.hibernate()` just before going to sleep.
 - Added interrupts to check for buttonpresses. `handleButtonPress()` loops until all button presses are cleared
 - Modified bootloader for faster wake from sleep (See [this guide](https://hackaday.io/project/174898-esp-now-weather-station/log/183782-bootloader-wake-time-improvements)).
@@ -51,33 +55,43 @@ Here is the refresh broken down (for a partial update):
 | ?? | 60 | 60 | was lazy to check |
 | `display.hibernate()` | 110 | 0 | removed `_Poweroff()` and removed `_wait_while_busy()` since the ESP is also going to sleep anyway |
 
-### Misc Features
-- ~~temperature app~~there's a hardware issue
-- NTP timesync (set to sync every 3 days).
-    - seems like it works, am lazy to test but the time gets synced periodically so ain't complaining.
-- sync to google calendar (internet). Followed [this tutorial.](https://www.instructables.com/E-Ink-Family-Calendar-Using-ESP32/). The code for Google Apps Script is in `\others\share_calendar.gs`. (set to sync every 3 days). Next event also shows on watchface
-- `DEBUG` modes which prints stuff to serial.
-- WiFi OTA to save your CP2104 USB chip.
-- watch "ticks" only once an hour from 1am to 7am to save batt. In between those hours the watchface only shows (e.g.) `03:xx` instead of `03:14`. (Actual time will show if you press the back button.) (See [Power Saving](###-power-saving) for all the other power saving hacks I've done)
 
-
-
-## What's Not Working / In Progress
-- ~~trying to configure the BMA423 properly, for low power~~ I think I'll just leave it uninitialised as I don't have any use for it now
-- (not working)RTC temperature sensor is messed up (hardware issue, shows 45 - 49dec C). ~~Substituted with BMA423 temperature sensor (yes, the IMU has a temp sensor) but temp is still a bit off (34 ish dec C) ~~ (Disabled the BMA423 sensor)
-- weather is disabled. I don't use it so I didn't spend a lot of time developing it. It may or may not work.
-
-
-## Other Changes
 ### Batt/Power Saving
 - ~~CPU set to 80Mhz (in the hope of power saving)~~ 240MHz is actually faster (noticeable in the UI) so I'm keeping it to that. The CPU spends very little time awake anyway.
 - downclock CPU to 10MHz while waiting for screen to update.
 - disable initialisation of BMA423 - seems to save a lot of battery!
 - ~~`fast menu` used to force the code to wait for the timeout before entering sleep even when in an app. Changed it to only wait for the timeout when in the menu. Otherwise (i.e. in an app) enter sleep immediately~~ `fastmenu` **is not used anymore since the UI is much more responsive anyway.** No more waiting for timeouts - Watchy goes to sleep immediately :)
 - low/critical battery warning
-	- low batt can engage power saver mode. Watch updates time once an hour when battery is critical (<5%>)
-- battery bar
+	- critical battery (<5%) engages power saver mode. Watch updates time once an hour.
+- User toggle-able power saver, makes Watchy 'tick' once every hour when activated (untested)
 - more accurate battery voltage. ADC callibration code derived from [peanutman on discord](https://discord.com/channels/804832182006579270/808787590060048465/877194857402232852) (requires sign in to access).
+- more accurate battery percentage, using a Look Up Table (LUT)
+
+
+### Misc Features
+- NTP time sync (set to sync every 3 days).
+    - seems like it works, am lazy to test but the time gets synced periodically so ain't complaining.
+- sync to google calendar (internet). Followed [this tutorial.](https://www.instructables.com/E-Ink-Family-Calendar-Using-ESP32/). The code for Google Apps Script is in `\others\share_calendar.gs`. (set to sync every 3 days). Next event also shows on watchface.
+![Calendar](https://github.com/yik3z/Watchy-CODE/blob/main/others/pictures/calendar_app.jpg?raw=true)
+
+- `DEBUG` modes which prints stuff to serial.
+- WiFi OTA to save your CP2104 USB chip.
+- watch "ticks" only once an hour from 1am to 7am to save batt. In between those hours the watchface only shows (e.g.) `03:xx` instead of `03:14`. (Actual time will show if you press the back button.) (See [Power Saving](###-power-saving) for all the other power saving hacks I've done)
+- stopwatch.
+- stats screen showing things like uptime, battery.
+![Stats_Screen](https://github.com/yik3z/Watchy-CODE/blob/main/others/pictures/stats_screen.jpg?raw=true)
+
+- ~~temperature app~~ I disabled it because I have a hardware issue.
+
+
+## What's Not Working / In Progress
+- ~~trying to configure the BMA423 properly, for low power~~ I think I'll just leave it uninitialised as I don't have any use for it now
+- (not working)RTC temperature sensor is messed up; shows 45 - 49dec C (I have a hardware issue with it so I've stopped working on temperature.). This is probably why my RTC drifts...~~Substituted with BMA423 temperature sensor (yes, the IMU has a temp sensor) but temp is still a bit off (34 ish dec C) ~~ (Update: Disabled the BMA423 sensor.) Maybe I should get the temperatre from the screen lol...
+- weather is disabled. I don't use it so I didn't spend a lot of time developing it. It may or may not work.
+
+
+## Other Changes
+
 
 ### Libraries Removed
 - removed `FWUpdate` cos it's useless
@@ -92,7 +106,7 @@ Here is the refresh broken down (for a partial update):
 - maybe improve RTC accuracy by changing PPM (?) (or I might just buy a new RTC chip and resolder)
 
 # Bugs
-- Anything that depends on the BMA423 will crash
+- Anything that depends on the BMA423 will crash (I have since de-initialised it.)
 - ~~WiFi seems to take a long time to initialise~~ It is what it is :(
 - Battery drain is a bit uneven, I think (battery suddenly drops from 40% to 30%)
 

@@ -17,7 +17,7 @@ RTC_DATA_ATTR bool darkMode = 0; //global darkmode
 RTC_DATA_ATTR bool fgColour = GxEPD_BLACK; 
 RTC_DATA_ATTR bool bgColour = GxEPD_WHITE; 
 RTC_DATA_ATTR uint8_t lowBatt = 0;  //0 = normal, 1 = low, 2 = critical
-RTC_DATA_ATTR bool powerSaver = 0; 
+RTC_DATA_ATTR bool powerSaver = 0;  // user-selectable power saver mode
 RTC_DATA_ATTR bool hourlyTimeUpdate = 0;
 volatile uint64_t wakeupBit;
 RTC_DATA_ATTR time_t lastNtpSync = 0;
@@ -95,8 +95,8 @@ void Watchy::init(String datetime){
     // Serial.println("display init'd: " + String(millis()));
     // #endif //DEBUG_TIMING
 
-    //critical battery mode
-    if(lowBatt == 2){   
+    //critical battery / power saver mode
+    if(lowBatt == 2 or powerSaver == 1){   
         if(!hourlyTimeUpdate){
             RTC.setAlarm(ALM2_MATCH_MINUTES, 0, 0, 0, 0);   //set RTC alarm to hourly (0th minute of the hour)
             hourlyTimeUpdate = 1;
@@ -187,9 +187,8 @@ void Watchy::init(String datetime){
 
 /***************  BUTTON HANDLER ***************/
 /* add the buttons for your apps here. 
-Rn I can't think of a better way to handle the button presses after wakeup
+TODO: Change to filter by app state first
 */
-
 void Watchy::handleButtonPress(){
     #ifdef DEBUG
     //Serial.println("Enter Loop (buttonpress)");
