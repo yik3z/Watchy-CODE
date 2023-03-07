@@ -57,15 +57,18 @@ Here is the refresh broken down (for a partial update):
 
 
 ### Batt/Power Saving
-- ~~CPU set to 80Mhz (in the hope of power saving)~~ 240MHz is actually faster (noticeable in the UI) so I'm keeping it to that. The CPU spends very little time awake anyway.
 - downclock CPU to 10MHz while waiting for screen to update.
-- disable initialisation of BMA423 - seems to save a lot of battery!
-- ~~`fast menu` used to force the code to wait for the timeout before entering sleep even when in an app. Changed it to only wait for the timeout when in the menu. Otherwise (i.e. in an app) enter sleep immediately~~ `fastmenu` **is not used anymore since the UI is much more responsive anyway.** No more waiting for timeouts - Watchy goes to sleep immediately :)
+- disable initialisation of BMA423 because I don't use it - seems to save a lot of battery!
 - low/critical battery warning
-	- critical battery (<5%) engages power saver mode. Watch updates time once an hour.
-- User toggle-able power saver, makes Watchy 'tick' once every hour when activated (untested)
+- watch "ticks" only once an hour to save battery under certain circumstances:
+    - Late night (1am to 7am). I plan to make a user override-able setting to disable it for that hour/for that night in case I'm out late.
+    - critical battery (<5%).
+    - user-set power saver (not tested whether it works as intended)
+In these cases, the watchface only shows (e.g.) `03:xx` instead of `03:14`. (Actual time will show if you press the back button.)
 - more accurate battery voltage. ADC callibration code derived from [peanutman on discord](https://discord.com/channels/804832182006579270/808787590060048465/877194857402232852) (requires sign in to access).
-- more accurate battery percentage, using a Look Up Table (LUT)
+- more accurate battery percentage, using a Look Up Table (LUT).
+- `fastmenu` **is not used anymore since the UI is much more responsive anyway.** No more waiting for timeouts - Watchy goes to sleep immediately :)~~`fast menu` used to force the code to wait for the timeout before entering sleep even when in an app. Changed it to only wait for the timeout when in the menu. Otherwise (i.e. in an app) enter sleep immediately~~ 
+- ~~CPU set to 80Mhz (in the hope of power saving)~~ 240MHz is actually faster (noticeable in the UI) so I'm keeping it to that. The CPU spends very little time awake anyway.
 
 
 ### Misc Features
@@ -74,10 +77,11 @@ Here is the refresh broken down (for a partial update):
 - sync to google calendar (internet). Followed [this tutorial.](https://www.instructables.com/E-Ink-Family-Calendar-Using-ESP32/). The code for Google Apps Script is in `\others\share_calendar.gs`. (set to sync every 3 days). Next event also shows on watchface.
 ![Calendar](https://github.com/yik3z/Watchy-CODE/blob/main/others/pictures/calendar_app.jpg?raw=true)
 
-- `DEBUG` modes which prints stuff to serial.
+- `DEBUG` modes which print stuff to serial.
 - WiFi OTA to save your CP2104 USB chip.
-- watch "ticks" only once an hour from 1am to 7am to save batt. In between those hours the watchface only shows (e.g.) `03:xx` instead of `03:14`. (Actual time will show if you press the back button.) (See [Power Saving](###-power-saving) for all the other power saving hacks I've done)
-- stopwatch.
+- stopwatch. Because of the screen refresh rate, it updates once a second, but internally it is counting the actual time (milliseconds). Not sure how much latency the start has though...
+![Stopwatch](https://github.com/yik3z/Watchy-CODE/blob/main/others/pictures/stopwatch_app.jpg?raw=true)
+
 - stats screen showing things like uptime, battery.
 ![Stats_Screen](https://github.com/yik3z/Watchy-CODE/blob/main/others/pictures/stats_screen.jpg?raw=true)
 
