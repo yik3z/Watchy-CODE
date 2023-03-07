@@ -29,56 +29,47 @@
 #define DOWN_BTN_MASK GPIO_SEL_4
 #define ACC_INT_MASK GPIO_SEL_14
 #define BTN_PIN_MASK MENU_BTN_MASK|BACK_BTN_MASK|UP_BTN_MASK|DOWN_BTN_MASK
+
 //display
 #define DISPLAY_WIDTH 200
 #define DISPLAY_HEIGHT 200
 #define DISPLAY_REFRESH_INTERVAL 300    //max refresh interval for the display
-//weather api
+
+//weather (note: weather is not shown anywhere and sync is disabled!)
 #define CITY_NAME "SINGAPORE" //if your city name has a space, replace with '+'
 #define COUNTRY_CODE "SG"
-
-//#define OPENWEATHERMAP_APIKEY "f058fe1cad2afe8e2ddc5d063a64cecb" //this is a generic one, actual one defined in sensitive_config.h
 #define OPENWEATHERMAP_URL "http://api.openweathermap.org/data/2.5/weather?q="
 #define TEMP_UNIT "metric" //use "imperial" for Fahrenheit"
-#define WEATHER_UPDATE_INTERVAL 30 //minutes
+//#define WEATHER_UPDATE_INTERVAL 30 //minutes not used
 
 //wifi
-//#define WIFI_AP_TIMEOUT 60
-//#define WIFI_AP_SSID "Watchy AP"  //used for WiFiManager AP
 #define WIFI_TIMEOUT 10000 //ms
 //WIFI_SSID and WIFI_PASSWORD defined in sensitive_config.h
+#define INTERNET_SYNC_INTERVAL 3 //days, syncs NTP time and calendar
 
 //menu
 #define WATCHFACE_STATE -1
 #define MAIN_MENU_STATE 0
 #define APP_STATE 1
 #define FAST_MENU_SLEEP_TIMEOUT 2000
-//#define FW_UPDATE_STATE 2
 
-
-//apps 
-/*
-#define STOPWATCH_STATE 1
-#define TIMER_STATE 2
-#define BATT_STATE 3
-#define ACC_STATE 3
-#define TEMPERATURE_STATE 3
-*/
+// for menu GUI
 #define MENU_HEIGHT 30
 #define MENU_LENGTH 6
-//set time
+
+// set time
 #define SET_HOUR 0
 #define SET_MINUTE 1
 #define SET_YEAR 2
 #define SET_MONTH 3
 #define SET_DAY 4
 #define YEAR_OFFSET 1970
-#define INTERNET_SYNC_INTERVAL 3 //days
-#define GMT_OFFSET_SEC 28800 //s, set time zone to singapore standard time
+#define GMT_OFFSET_SEC 28800    //s, set time zone to singapore standard time
                                 // ie UTC 8 * 60 * 60 = 28800
-#define DAYLIGHT_OFFSET_SEC 0 // if observing Daylight saving time 3600 otherwise 0. DOESN'T WORK
+#define DAYLIGHT_OFFSET_SEC 0   // if observing Daylight saving time 3600 otherwise 0.
 #define NTP_SERVER "pool.ntp.org"
-//BLE OTA
+
+//BLE OTA (unused)
 #define BLE_DEVICE_NAME "Watchy BLE OTA"
 #define WATCHFACE_NAME "Watchy 7 Segment"
 #define SOFTWARE_VERSION_MAJOR 1
@@ -93,7 +84,7 @@
 #define NIGHT_HOURS_END 6
 #define LOW_BATT_THRESHOLD 15
 #define CRIT_BATT_THRESHOLD 5
-//#define USING_ACCELEROMETER 0   //boolean to decide whether the accelerometer gets initialised
+//#define USING_ACCELEROMETER   //whether the accelerometer gets initialised. DO NOT ENABLE
 
 #define BTN_DEBOUNCE_INTERVAL 1 //minimum time between buttonpresses (in ms) for it to be counted
 #define BTN_TIMEOUT 2500        //max time to wait for any uncleared button events before ignoring them and going to sleep
