@@ -37,27 +37,27 @@ _This Watchy works slightly different from the original. With each interaction (
 
    **Not extensively tested, but seems to work for now. Sleep+wake together take ~50ms (based on my janky testing).**
    
-- Modified the display library (GxEPD) to reduce unnecessary wait times. A full loop (sleep>wake>sleep) is 300ms shorter now 🙂 :
+- Modified the display library (GxEPD) to reduce unnecessary wait times. ~~A full loop (sleep>wake>sleep) is 300ms shorter now~~ Update: SPI transfers were sped up too, so now a full loop is 400 - 600ms faster than the orginal. 🙂
 
-|  | Before (ms) | After (ms) |
-| --- | --- | --- |
-| Partial Refresh | 894 | 592 |
-| Full refresh | 2637 | 2312 |
+|  | **Before (ms)** | **After (ms)**  | **With SPI improvements (ms)** |
+| --- | --- | --- | --- |
+| **Partial Refresh** | 894 | 592 | 497 |
+| **Full refresh** | 2637 | 2312 | 2040 |
 
 Here is the refresh broken down (for a partial update):
 
-|  | Before (ms) | After (ms) | Reason |
+|  | **Before (ms)** | **After (ms)** | **Reason** |
 | --- | --- | --- | --- |
-| `display.init()` | 250++ | 40 | Unnecessary 200ms delay was removed, shortened delays to minimum sped in datasheet |
+| `display.init()` | 240++ | ~~40~~ 20 | Unnecessary 200ms delay was removed. 20ms faster after SPI transaction sped up (??) |
 | graphics processing | 7-8 | 7-8 | `display.print()` and all that. Small enough not to bother optimising |
-| ?? | ~50 | ~50 | was lazy to check what |
+| ?? (probs j the SPI transfer) | ~50 | 27 | SPI transfer sped up |
 | `_Update_Part()` | 400 | 400 | can’t change anything here |
-| ?? | 60 | 60 | was lazy to check |
-| `display.hibernate()` | 110 | 0 | removed `_Poweroff()` and removed `_wait_while_busy()` since the ESP is also going to sleep anyway |
+| ?? (probs j the SPI transfer) | 60 | 17 | SPI transfer sped up |
+| hibernate() | 110 | 0 | removed `_Poweroff()` and removed `_wait_while_busy()` since the ESP is also going to sleep anyway |
 
 
 ### Batt/Power Saving
-- downclock CPU to 10MHz while waiting for screen to update.
+-  ~~downclock CPU to 10MHz~~ ESP goes into light sleep while waiting for screen to update. (theoretically 0.8mA)
 - disable initialisation of BMA423 because I don't use it - seems to save a lot of battery!
 - low/critical battery warning
 - watch "ticks" only once an hour to save battery under certain circumstances:
@@ -115,7 +115,7 @@ In these cases, the watchface only shows (e.g.) `03:xx` instead of `03:14`. (Act
 - Battery drain is a bit uneven, I think (battery suddenly drops from 40% to 30%)
 
 # Dependencies
-- GxEPD2 by Jean-Marc Zingg (modified, it's in `\lib` now)
+- GxEPD2 by Jean-Marc Zingg (_highly modified_, it's in `\lib` now)
 - Adafruit GFX Library by Adafruit
 - Adafruit BusIO by Adafruit (I think)
 - DS3232RTC by Jack Christensen

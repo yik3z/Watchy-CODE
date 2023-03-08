@@ -435,6 +435,7 @@ void Watchy::wifiOta(uint8_t btnPin){
 		Serial.print("IP address: ");
 		Serial.println(WiFi.localIP());
 		Serial.println("Press down button to cancel");
+        
 		attachInterrupt(DOWN_BTN_PIN, ISRStopwatchEnd, RISING); //use the same stopwatch interrupt function to stop OTA
 
 		display.init(0, false); //re-init after hibernating (waiting for wifi)
@@ -462,14 +463,14 @@ void Watchy::wifiOta(uint8_t btnPin){
 				#endif //DEBUG
 				break;
 			}
-			ArduinoOTA.handle();    //no display updates here because it'll probably break the OTA update. A successful OTA should reboot the ESP
+			ArduinoOTA.handle();    // no display updates here because it'll probably break the OTA update. A successful OTA should reboot the ESP
 		} //while(true)
 	} //if(connected)
 	//if we get this far it means the OTA loop was cancelled
 
 	//turn off WiFi
-	WiFi.mode(WIFI_OFF);
-	esp_wifi_stop();
+	WiFi.mode(WIFI_OFF);    // calls esp_wifi_stop()
+	//esp_wifi_stop();
 	btStop();
 
 	//update screen
