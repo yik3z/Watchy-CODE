@@ -22,6 +22,9 @@ extern RTC_DATA_ATTR int calendarLength;
  * @brief Displays a GUI and buzzes the motor for a few seconds
  */
 void Watchy::showBuzz(){
+    #ifdef DEBUG
+    Serial.println("App: Vib");
+    #endif
     guiState = APP_STATE;
     display.setFullWindow();
     display.fillScreen(bgColour);
@@ -39,6 +42,9 @@ void Watchy::showBuzz(){
  * Might be quite power hungry while timing becuase there's no way to sleep while counting millis
  */
 void Watchy::stopWatch(uint8_t btnPin){
+    #ifdef DEBUG
+    Serial.println("App: StpWtch");
+    #endif
     guiState = APP_STATE;
     if((btnPin == 0) || (btnPin == UP_BTN_PIN)){    //entering the app for the first time
         finalTimeElapsed = 0;
@@ -150,6 +156,9 @@ void Watchy::stopWatch(uint8_t btnPin){
  * Uptime, Last NTP Sync, Power Saver Mode, Battery
  */
 void Watchy::showStats(uint8_t btnPin){
+    #ifdef DEBUG
+    Serial.println("App: Stats");
+    #endif
     guiState = APP_STATE;
     display.setFullWindow();
     display.fillScreen(bgColour);
@@ -222,6 +231,9 @@ void Watchy::showStats(uint8_t btnPin){
 }
 
 void Watchy::showCalendar(uint8_t btnPin){
+    #ifdef DEBUG
+    Serial.println("App: Calndr");
+    #endif
 	guiState = APP_STATE;
 	display.setFullWindow();
 	display.fillScreen(bgColour);
@@ -314,6 +326,9 @@ void Watchy::showCalendar(uint8_t btnPin){
 }
 
 void Watchy::connectWiFiGUI(){
+    #ifdef DEBUG
+    Serial.println("App: WiFi");
+    #endif
 	//TODO: add in functionality to retry wifi
 	guiState = APP_STATE;  
 	display.setFullWindow();
@@ -324,16 +339,16 @@ void Watchy::connectWiFiGUI(){
 	display.println("Connecting...");
 	display.display(false, darkMode);
 	display.hibernate();
-	bool connected = syncInternetStuff();    //perform NTP n calendar syncing
+	String SSID = syncInternetStuff();    //perform NTP n calendar syncing
 	display.init(0, false);
 	display.setFullWindow();
 	display.fillScreen(bgColour);
 	display.setTextColor(fgColour);
-	if(connected){
+	if(SSID != ""){
 		display.setCursor(30, 40);
 		display.println("Connected to");
 		display.setCursor(30, 60);
-		display.println(WiFi.SSID());
+		display.println(SSID);
 		display.setCursor(5, 20);
 		display.println("<Exit");        
 		if(lastNtpSyncSuccess){
@@ -363,14 +378,17 @@ void Watchy::connectWiFiGUI(){
 		display.println("<Exit");
 	}
 	display.display(false, darkMode);//full refresh
-	WiFi.mode(WIFI_OFF);
-	esp_wifi_stop();
+	WiFi.mode(WIFI_OFF);    //calls esp_wifi_stop() to turn off the radio
+	//esp_wifi_stop();
 	btStop();
 }   //connectWiFiGUI
 
 void Watchy::wifiOta(uint8_t btnPin){
 	//TODO: add in functionality to retry wifi connection
 	guiState = APP_STATE;  
+    #ifdef DEBUG
+    Serial.println("App: OTA");
+    #endif
 	display.setFullWindow();
 	display.fillScreen(bgColour);
 	display.setFont(&FreeMonoBold9pt7b);
@@ -468,6 +486,9 @@ void Watchy::wifiOta(uint8_t btnPin){
 } //wifiOta
 
 void Watchy::setPowerSaver(uint8_t btnPin){ //does not do anything at the moment
+    #ifdef DEBUG
+    Serial.println("App: PwrSaver");
+    #endif
 	guiState = APP_STATE;
 	display.setFullWindow();
 	display.fillScreen(bgColour);
@@ -497,6 +518,9 @@ void Watchy::setPowerSaver(uint8_t btnPin){ //does not do anything at the moment
 }
 
 void Watchy::setDarkMode(uint8_t btnPin){
+    #ifdef DEBUG
+    Serial.println("App: DarkMode");
+    #endif
 	guiState = APP_STATE;
 	if(btnPin == DOWN_BTN_PIN){    //toggle darkmode if button has been pressed
 		darkMode = !darkMode;
@@ -529,6 +553,9 @@ void Watchy::setDarkMode(uint8_t btnPin){
 
 //  GUI to allow the user to manually set the date and time
 void Watchy::setTime(){
+    #ifdef DEBUG
+    Serial.println("App: SetTime");
+    #endif
     guiState = APP_STATE;
     RTC.read(currentTime);
     int8_t minute = currentTime.Minute;

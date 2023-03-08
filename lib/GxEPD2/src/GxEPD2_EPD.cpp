@@ -112,22 +112,24 @@ void GxEPD2_EPD::_reset()
 
 void GxEPD2_EPD::_waitWhileBusy(const char* comment, uint16_t busy_time)
 {
-
   if (_busy >= 0)
   {
-    if(false){ //SKIP for now. TODO: check if wifi/bt is on
-      gpio_wakeup_enable((gpio_num_t)_busy, _busy_level != HIGH ? GPIO_INTR_HIGH_LEVEL : GPIO_INTR_LOW_LEVEL);//enable light sleep wake on button press
-      esp_sleep_enable_gpio_wakeup();
-      #ifdef DEBUG
-      Serial.print("Gg to light sleep");
-      #endif
-      esp_err_t res = esp_light_sleep_start();
-      #ifdef DEBUG
-      Serial.print("ESP Light sleep outcome: ");
-      Serial.println(res);
-      #endif
-      // sleeps until _busy pin triggers an interrupt
-    }else{
+    esp_err_t err = ESP_OK;
+    //if(true){ //TODO: check if wifi/bt is on
+    gpio_wakeup_enable(GPIO_NUM_19 /*(gpio_num_t)_busy*/, GPIO_INTR_LOW_LEVEL);//enable light sleep wake on button press
+    esp_sleep_enable_gpio_wakeup();
+    #ifdef DEBUG_TIMING
+    Serial.print("waitWhileBusy sleep start: ");
+    Serial.println(millis());
+    #endif
+    err = esp_light_sleep_start(); //successfully enters and leaves light sleep. Maybe it's automatically triggered by something
+    #ifdef DEBUG_TIMING
+    Serial.print("waitWhileBusy wakeup: ");
+    Serial.println(millis());
+    #endif
+    // sleeps until _busy pin triggers an interrupt
+    //}
+    if (err != ESP_OK){ //sleep failed, so downclock cpu and poll _busy. change to ESP_ERR_SLEEP_REECT if I can find the enum for it...
       delay(1); // add some margin to become active
       unsigned long start = micros();
       uint32_t freq = getCpuFrequencyMhz();

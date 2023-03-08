@@ -62,25 +62,16 @@ Watchy::Watchy(){
 //Main "loop" that is run everytime Watchy is woken from sleep
 void Watchy::init(String datetime){
     wakeup_reason = esp_sleep_get_wakeup_cause(); //get wake up reason
-
+    if (wakeup_reason == ESP_SLEEP_WAKEUP_EXT1){
+      wakeupBit = esp_sleep_get_ext1_wakeup_status(); //get buttonpress (need to get it before display puts watchy in light sleep in _waitWhileBusy())
+    }
     #ifdef DEBUG
     Serial.begin(115200);
     #ifdef DEBUG_TIMING
     Serial.println("wakeup: " + String(millis()));
     #endif //DEBUG_TIMING
     //Serial.println(wakeup_reason);
-
-    // //to check CPU freq
-    // Serial.print("CPU Freq = ");
-    // Serial.print(getCpuFrequencyMhz());
-    // Serial.println(" MHz");
-    // Serial.print("XTAL Freq = ");
-    // Serial.print(getXtalFrequencyMhz());
-    // Serial.println(" MHz");
-    // Serial.print("APB Freq = ");
-    // Serial.print(getApbFrequency());
-    // Serial.println(" Hz");
-
+    //_printCpuSettings();
     #endif //DEBUG
 
     Wire.begin(SDA, SCL); //init i2c
@@ -110,7 +101,6 @@ void Watchy::init(String datetime){
                 showWatchFace(true); //partial updates on tick
             }
         case ESP_SLEEP_WAKEUP_EXT1: //button Press
-            wakeupBit = esp_sleep_get_ext1_wakeup_status();
             handleButtonPress();
             break;
         default: //reset
@@ -163,7 +153,7 @@ void Watchy::init(String datetime){
             break;
         case ESP_SLEEP_WAKEUP_EXT1: //button Press
             lastButtonInterrupt = millis();
-            wakeupBit = esp_sleep_get_ext1_wakeup_status();
+            //wakeupBit = esp_sleep_get_ext1_wakeup_status(); //has been assigned earlier, before disaply.init()
             setISRs();
             while(true){
                 handleButtonPress();
@@ -417,6 +407,9 @@ void Watchy::handleButtonPress(){
 
 //scrolling menu by Alex Story
 void Watchy::showMenu(byte menuIndex, bool partialRefresh){
+  #ifdef DEBUG
+  Serial.println("GUI: Menu");
+  #endif
   guiState = MAIN_MENU_STATE;  
   display.setFullWindow();
   display.fillScreen(bgColour);
@@ -507,14 +500,14 @@ void Watchy::_rtcConfig(String datetime){
   RTC.read(currentTime);
 }
  
-bool Watchy::syncInternetStuff(){
-  //String SSID = "";  //used to return the SSID but the calling function can just call WiFi.SSID() by itself
+String Watchy::syncInternetStuff(){
+  String SSID = "";  //used to return the SSID
   bool connected = initWiFi();
   if(connected) { 
-    //SSID = WiFi.SSID();
+    SSID = WiFi.SSID();
     syncNtpTime();
     fetchCalendar();
-    //getWeatherData(true); //works alone
+    //getWeatherData(true); //works alone, not tested together with the other 2. I don't need weather anyway
     #ifdef DEBUG
     //Serial.print("Internet connectivity test: ");
     //Serial.println(internetWorks());
@@ -525,7 +518,7 @@ bool Watchy::syncInternetStuff(){
   WiFi.mode(WIFI_OFF); // calls esp_wifi_stop() to shut down the radio to save power
   btStop();
   //esp_wifi_stop(); 
-  return connected;
+  return SSID;
 }
 
 /*!
@@ -715,6 +708,22 @@ uint8_t Watchy::getBatteryPercent(uint32_t vBatt){
     } else lowBatt = 0;
     return (uint8_t)percentage;
 } 
+
+#ifdef DEBUG
+// Prints the cpu settings to serial port, for debug
+void Watchy::_printCpuSettings(){
+  //to check CPU freq
+  Serial.print("CPU Freq = ");
+  Serial.print(getCpuFrequencyMhz());
+  Serial.println(" MHz");
+  Serial.print("XTAL Freq = ");
+  Serial.print(getXtalFrequencyMhz());
+  Serial.println(" MHz");
+  Serial.print("APB Freq = ");
+  Serial.print(getApbFrequency());
+  Serial.println(" Hz");
+}
+#endif
 
 // ISR for stopwatch buttonpress
 void IRAM_ATTR ISRStopwatchEnd() {

@@ -95,7 +95,7 @@
 #define CRIT_BATT_THRESHOLD 5
 //#define USING_ACCELEROMETER 0   //boolean to decide whether the accelerometer gets initialised
 
-#define BTN_DEBOUNCE_INTERVAL 8 //minimum time between buttonpresses (in ms) for it to be counted
+#define BTN_DEBOUNCE_INTERVAL 20 //minimum time between buttonpresses (in ms) for it to be counted
 #define BTN_TIMEOUT 2500        //max time to wait for any uncleared button events before ignoring them and going to sleep
 
 //experimental (not yet used)

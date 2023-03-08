@@ -18,6 +18,9 @@ extern RTC_DATA_ATTR int calendarLength;
 Watchface_DIN::Watchface_DIN(){} //constructor
 
 void Watchface_DIN::drawWatchFace(){
+    #ifdef DEBUG
+    Serial.println("GUI: Watchface");
+    #endif
     display.fillScreen(bgColour);
     display.setTextColor(fgColour);
     drawTime();
