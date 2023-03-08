@@ -84,6 +84,9 @@ class Watchy {
     private:
         void _rtcConfig(String datetime);    
         void _bmaConfig();
+        #ifdef DEBUG
+        void _printCpuSettings();
+        #endif
         static uint16_t _readRegister(uint8_t address, uint8_t reg, uint8_t *data, uint16_t len);
         static uint16_t _writeRegister(uint8_t address, uint8_t reg, uint8_t *data, uint16_t len);
 };

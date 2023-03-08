@@ -1,10 +1,10 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-//#define DEBUG             //enable printing of general debug messages
+#define DEBUG             //enable printing of general debug messages
   #ifdef DEBUG
   //#define DEBUG_CALENDAR    //enable printing of calendar debug messages
-  //#define DEBUG_TIMING        //enable printing of timinings (millis())
+  #define DEBUG_TIMING        //enable printing of timinings (millis())
   //#define DEBUG_POWERSAVER  //enable printing of power saver - related messages
   #endif //DEBUG
 #define INCLUDE_WEATHER
@@ -86,7 +86,7 @@
 #define CRIT_BATT_THRESHOLD 5
 //#define USING_ACCELEROMETER   //whether the accelerometer gets initialised. DO NOT ENABLE
 
-#define BTN_DEBOUNCE_INTERVAL 1 //minimum time between buttonpresses (in ms) for it to be counted
+#define BTN_DEBOUNCE_INTERVAL 20 //minimum time between buttonpresses (in ms) for it to be counted
 #define BTN_TIMEOUT 2500        //max time to wait for any uncleared button events before ignoring them and going to sleep
 
 //experimental (not yet used)
