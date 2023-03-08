@@ -9,7 +9,7 @@
 #include <Wire.h>
 #include <Fonts/FreeMonoBold9pt7b.h>
 //#include "DIN_Black35pt7b.h"
-//#include "BLE.h"
+#include "BLE.h"
 #include <esp_wifi.h>
 #include "driver/adc.h"
 #include "esp_adc_cal.h"
