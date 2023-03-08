@@ -507,11 +507,11 @@ void Watchy::_rtcConfig(String datetime){
   RTC.read(currentTime);
 }
  
-String Watchy::syncInternetStuff(){
-  String SSID = "";
+bool Watchy::syncInternetStuff(){
+  //String SSID = "";  //used to return the SSID but the calling function can just call WiFi.SSID() by itself
   bool connected = initWiFi();
   if(connected) { 
-    SSID = WiFi.SSID();
+    //SSID = WiFi.SSID();
     syncNtpTime();
     fetchCalendar();
     //getWeatherData(true); //works alone
@@ -522,10 +522,10 @@ String Watchy::syncInternetStuff(){
     
     internetSyncCounter = 0;  //reset the counter
   }
-  WiFi.mode(WIFI_OFF); // shut down the radio to save power
+  WiFi.mode(WIFI_OFF); // calls esp_wifi_stop() to shut down the radio to save power
   btStop();
-  esp_wifi_stop(); 
-  return SSID;
+  //esp_wifi_stop(); 
+  return connected;
 }
 
 /*!

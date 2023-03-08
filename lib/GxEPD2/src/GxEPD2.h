@@ -13,6 +13,7 @@
 #define _GxEPD2_H_
 
 #define DEBUG_TIMING    //enable printing of timinings (millis())
+#define DEBUG           //enable printing of general debug messages to serial
 
 #include <Arduino.h>
 #include <SPI.h>

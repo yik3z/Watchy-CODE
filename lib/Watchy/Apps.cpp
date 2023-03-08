@@ -324,16 +324,16 @@ void Watchy::connectWiFiGUI(){
 	display.println("Connecting...");
 	display.display(false, darkMode);
 	display.hibernate();
-	String SSID = syncInternetStuff();    //perform NTP syncing
+	bool connected = syncInternetStuff();    //perform NTP n calendar syncing
 	display.init(0, false);
 	display.setFullWindow();
 	display.fillScreen(bgColour);
 	display.setTextColor(fgColour);
-	if(SSID!=""){
+	if(connected){
 		display.setCursor(30, 40);
 		display.println("Connected to");
 		display.setCursor(30, 60);
-		display.println(SSID);
+		display.println(WiFi.SSID());
 		display.setCursor(5, 20);
 		display.println("<Exit");        
 		if(lastNtpSyncSuccess){

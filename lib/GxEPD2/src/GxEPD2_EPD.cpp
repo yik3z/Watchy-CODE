@@ -92,7 +92,7 @@ void GxEPD2_EPD::_reset()
       pinMode(_rst, OUTPUT);
       delay(_reset_duration);
       pinMode(_rst, INPUT_PULLUP);
-      delay(200);
+      delay(_reset_duration); //changed, was 200
     }
     else
     {
@@ -112,39 +112,52 @@ void GxEPD2_EPD::_reset()
 
 void GxEPD2_EPD::_waitWhileBusy(const char* comment, uint16_t busy_time)
 {
-  uint32_t freq = getCpuFrequencyMhz();
-  setCpuFrequencyMhz(10); //added
+
   if (_busy >= 0)
   {
-    //Serial.print("delay");
-    delay(1); // add some margin to become active
-    unsigned long start = micros();
-    while (1)
-    {
-      if (digitalRead(_busy) != _busy_level) break;
-      delay(1);
-      if (micros() - start > _busy_timeout)
+    if(false){ //SKIP for now. TODO: check if wifi/bt is on
+      gpio_wakeup_enable((gpio_num_t)_busy, _busy_level != HIGH ? GPIO_INTR_HIGH_LEVEL : GPIO_INTR_LOW_LEVEL);//enable light sleep wake on button press
+      esp_sleep_enable_gpio_wakeup();
+      esp_err_t res = esp_light_sleep_start();
+      #ifdef DEBUG
+      Serial.print("ESP Light sleep outcome: ");
+      Serial.println(res);
+      #endif
+      // sleeps until _busy pin triggers an interrupt
+    }else{
+      delay(1); // add some margin to become active
+      unsigned long start = micros();
+      uint32_t freq = getCpuFrequencyMhz();
+      setCpuFrequencyMhz(10); // downclock CPU to 10MHz
+      while (1)
       {
-        Serial.println("Busy Timeout!");
-        break;
+        if (digitalRead(_busy) != _busy_level) break;
+        delay(1);
+        if (micros() - start > _busy_timeout)
+        {
+          Serial.println("Busy Timeout!");
+          break;
+        }
       }
-    }
-    if (comment)
-    {
-#if !defined(DISABLE_DIAGNOSTIC_OUTPUT)
-      if (_diag_enabled)
+      if (comment)
       {
-        unsigned long elapsed = micros() - start;
-        Serial.print(comment);
-        Serial.print(" : ");
-        Serial.println(elapsed);
+      #if !defined(DISABLE_DIAGNOSTIC_OUTPUT)
+        if (_diag_enabled)
+        {
+          unsigned long elapsed = micros() - start;
+          Serial.print(comment);
+          Serial.print(" : ");
+          Serial.println(elapsed);
+        }
+      #endif
       }
-#endif
+      (void) start;
+      setCpuFrequencyMhz(freq); // restore original CPU frequency
     }
-    (void) start;
+    
   }
   else delay(busy_time);
-  setCpuFrequencyMhz(freq); //added
+
 }
 
 void GxEPD2_EPD::_writeCommand(uint8_t c)
@@ -255,6 +268,14 @@ void GxEPD2_EPD::_transfer(uint8_t value)
 {
   SPI.transfer(value);
 }
+
+void GxEPD2_EPD::_transferCommand(uint8_t value)
+{
+  if (_dc >= 0) digitalWrite(_dc, LOW);
+  SPI.transfer(value);
+  if (_dc >= 0) digitalWrite(_dc, HIGH);
+}
+
 
 void GxEPD2_EPD::_endTransfer()
 {

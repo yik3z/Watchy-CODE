@@ -56,7 +56,7 @@ class Watchy {
         void vibMotor(uint8_t intervalMs = 100, uint8_t length = 20);
         bool initWiFi();
         void syncNtpTime();
-        String syncInternetStuff();
+        bool syncInternetStuff();
 
         void showMenu(byte menuIndex, bool partialRefresh);
         virtual void drawWatchFace(); //override this method for different watch faces
