@@ -2,8 +2,8 @@
 share_calendar: google apps script to export your google calendar data through a HTML request.
 
 Adapted from https://www.instructables.com/E-Ink-Family-Calendar-Using-ESP32/ (github: https://github.com/kristiantm/eink-family-calendar-esp32)
- 
-Original credit to COERT VONK https://coertvonk.com/sw/embedded/esp8266-clock-import-events-from-google-calendar-15809
+
+Credit to COERT VONK https://coertvonk.com/sw/embedded/esp8266-clock-import-events-from-google-calendar-15809
 Have followed his example, and added multi-calendar support, where all events from "selected" calendars are fetched, and sorted before being returned to the caller
 You need to put this up as a public script. Please note that this will expose your calendar entries to the internet - however, only you have the unique id - and there is no input or write access.
 If you find a solution that can avoid it, then please share and I will update the guide
@@ -45,7 +45,11 @@ function doGet(e) {
 
     var event=events[ii];    
     var myStatus = event.getMyStatus();
-    
+
+    // Filter out birthdays
+    if((event.getTitle().search("s birthday")>-1) && event.isAllDayEvent()){
+      continue;
+    }
     
     // Define valid entryStatus to populate array
     switch(myStatus) {
@@ -60,9 +64,10 @@ function doGet(e) {
     
     // Show just every entry regardless of GuestStatus to also get events from shared calendars where you haven't set up the appointment on your own
 
-    str += event.getStartTime().toLocaleString("en-GB") + ';' +
+    str += event.getStartTime().toLocaleString("en-GB") + ';' + // "04 03 2023 07:30:00 GMT+0800"
+    // event.getEndTime().toLocaleString("en-GB") + ';' + // "04 03 2023 09:30:00 GMT+0800"
     event.getTitle() +';' + 
-    event.isAllDayEvent() + ';';    // "04 03 2023 07:30:00 GMT+0800"
+    event.isAllDayEvent() + ';';    
   }
   
   return ContentService.createTextOutput(str);
