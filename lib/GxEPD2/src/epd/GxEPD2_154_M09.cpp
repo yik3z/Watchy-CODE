@@ -291,8 +291,8 @@ void GxEPD2_154_M09::hibernate()
   _PowerOff();
   if (_rst >= 0)
   {
-    _writeCommand(0x07); // deep sleep
-    _writeData(0xA5);    // check code
+    //_writeCommand(0x07); // deep sleep
+    //_writeData(0xA5);    // check code
     _hibernating = true;
   }
 }
@@ -330,7 +330,7 @@ void GxEPD2_154_M09::_PowerOff()
 {
   if (_power_is_on)
   {
-    if (_using_partial_mode) _Update_Part(); // would hang on _powerOn() without
+    //if (_using_partial_mode) _Update_Part(); // would hang on _powerOn() without
     _writeCommand(0x02); // power off
     _waitWhileBusy("_PowerOff", power_off_time);
     _power_is_on = false;
