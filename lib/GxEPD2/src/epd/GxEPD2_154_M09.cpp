@@ -30,7 +30,7 @@ void GxEPD2_154_M09::writeScreenBuffer(uint8_t value)
   _initial_write = false; // initial full screen buffer clean done
   if (!_using_partial_mode) _Init_Part();
   _writeScreenBuffer(0x13, value); // set current
-  if (_initial_refresh) _writeScreenBuffer(0x26, value); // set previous
+  if (_initial_refresh) _writeScreenBuffer(0x10, value); // set previous
 }
 
 void GxEPD2_154_M09::writeScreenBufferAgain(uint8_t value)
@@ -49,22 +49,33 @@ void GxEPD2_154_M09::_writeScreenBuffer(uint8_t command, uint8_t value)
 }
 
 
-extern RTC_DATA_ATTR uint8_t old_bitmap[(200 / 8) * 200]; //hardcoded
+//extern RTC_DATA_ATTR uint8_t old_bitmap[(200 / 8) * 200]; //hardcoded
 void GxEPD2_154_M09::writeImage(const uint8_t bitmap[], int16_t x, int16_t y, int16_t w, int16_t h, bool invert, bool mirror_y, bool pgm)
 {
+  
+  _writeCommand(0x91); // partial in
   _writeImage(0x13, bitmap, x, y, w, h, invert, mirror_y, pgm);
-  _writeImage(0x10, old_bitmap, x, y, w, h, invert, mirror_y, pgm);
+  //_writeImage(0x10, old_bitmap, x, y, w, h, invert, mirror_y, pgm);
 }
 
-void GxEPD2_154_M09::writeImageAgain(const uint8_t old_bitmap[], int16_t x, int16_t y, int16_t w, int16_t h, bool invert, bool mirror_y, bool pgm)
+void GxEPD2_154_M09::writeImageForFullRefresh(const uint8_t bitmap[], int16_t x, int16_t y, int16_t w, int16_t h, bool invert, bool mirror_y, bool pgm)
 {
-  //_writeImage(0x10, old_bitmap, x, y, w, h, invert, mirror_y, pgm);
+  _writeImage(0x10, bitmap, x, y, w, h, invert, mirror_y, pgm); //should we be writing this?
+  _writeImage(0x13, bitmap, x, y, w, h, invert, mirror_y, pgm);
+}
+
+void GxEPD2_154_M09::writeImageAgain(const uint8_t bitmap[], int16_t x, int16_t y, int16_t w, int16_t h, bool invert, bool mirror_y, bool pgm)
+{
+  _writeImage(0x10, bitmap, x, y, w, h, invert, mirror_y, pgm);
+  _writeCommand(0x92); // partial out TODO: maybe move partial out here
 }
 
 void GxEPD2_154_M09::_writeImage(uint8_t command, const uint8_t bitmap[], int16_t x, int16_t y, int16_t w, int16_t h, bool invert, bool mirror_y, bool pgm)
 {
   if (_initial_write) writeScreenBuffer(); // initial full screen buffer clean
-  delay(1); // yield() to avoid WDT on ESP8266 and ESP32
+  #if defined(ESP8266) || defined(ESP32)
+  yield(); //  to avoid WDT on ESP8266 and ESP32
+  #endif
   int16_t wb = (w + 7) / 8; // width bytes, bitmaps are padded
   x -= x % 8; // byte boundary
   w = wb * 8; // byte boundary
@@ -78,7 +89,6 @@ void GxEPD2_154_M09::_writeImage(uint8_t command, const uint8_t bitmap[], int16_
   h1 -= dy;
   if ((w1 <= 0) || (h1 <= 0)) return;
   if (!_using_partial_mode) _Init_Part();
-  _writeCommand(0x91); // partial in
   _setPartialRamArea(x1, y1, w1, h1);
   _writeCommand(command);
   for (int16_t i = 0; i < h1; i++)
@@ -104,8 +114,9 @@ void GxEPD2_154_M09::_writeImage(uint8_t command, const uint8_t bitmap[], int16_
       _writeData(data);
     }
   }
-  _writeCommand(0x92); // partial out
-  delay(1); // yield() to avoid WDT on ESP8266 and ESP32
+  #if defined(ESP8266) || defined(ESP32)
+  yield(); // to avoid WDT on ESP8266 and ESP32
+  #endif
 }
 
 void GxEPD2_154_M09::writeImagePart(const uint8_t bitmap[], int16_t x_part, int16_t y_part, int16_t w_bitmap, int16_t h_bitmap,
@@ -239,6 +250,7 @@ void GxEPD2_154_M09::drawNative(const uint8_t* data1, const uint8_t* data2, int1
   }
 }
 
+//TODO: put power on and off inside refresh?
 void GxEPD2_154_M09::refresh(bool partial_update_mode)
 {
   if (partial_update_mode) refresh(0, 0, WIDTH, HEIGHT);
@@ -250,6 +262,7 @@ void GxEPD2_154_M09::refresh(bool partial_update_mode)
   }
 }
 
+//TODO: put power on and off inside refresh?
 void GxEPD2_154_M09::refresh(int16_t x, int16_t y, int16_t w, int16_t h)
 {
   if (_initial_refresh) return refresh(false); // initial update needs be full update
@@ -262,10 +275,10 @@ void GxEPD2_154_M09::refresh(int16_t x, int16_t y, int16_t w, int16_t h)
   w1 -= x1 - x;
   h1 -= y1 - y;
   if (!_using_partial_mode) _Init_Part();
-  _writeCommand(0x91); // partial in
+  _writeCommand(0x91); // partial in  //TODO: remove?
   _setPartialRamArea(x1, y1, w1, h1);
   _Update_Part();
-  _writeCommand(0x92); // partial out
+  _writeCommand(0x92); // partial out //TODO: remove?
 }
 
 void GxEPD2_154_M09::powerOff(void)
@@ -284,6 +297,7 @@ void GxEPD2_154_M09::hibernate()
   }
 }
 
+//TODO: check
 void GxEPD2_154_M09::_setPartialRamArea(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
 {
   uint16_t xe = (x + w - 1) | 0x0007; // byte boundary inclusive (last byte)
@@ -328,37 +342,37 @@ void GxEPD2_154_M09::_InitDisplay()
 {
   if (_hibernating) _reset();
   _writeCommand(0x00); // panel setting
-  _writeData (0xff);
+  _writeData (0xdf);
   _writeData (0x0e);
-  _writeCommand(0x01); // power setting
-  _writeData(0x03);
-  _writeData(0x06); // 16V
-  _writeData(0x2A);//
-  _writeData(0x2A);//
+  // _writeCommand(0x01); // power setting
+  // _writeData(0x03);
+  // _writeData(0x06); // 16V
+  // _writeData(0x2A);//
+  // _writeData(0x2A);//
   _writeCommand(0x4D); // FITIinternal code
   _writeData (0x55);
-  _writeCommand(0xaa);
+  _writeCommand(0xaa); // ? Exists in sample code
   _writeData (0x0f);
-  _writeCommand(0xE9);
+  _writeCommand(0xE9); // ? Exists in sample code
   _writeData (0x02);
-  _writeCommand(0xb6);
+  _writeCommand(0xb6); // ? Exists in sample code
   _writeData (0x11);
-  _writeCommand(0xF3);
+  _writeCommand(0xF3); // ? Exists in sample code
   _writeData (0x0a);
-  _writeCommand(0x06); // boost soft start
-  _writeData (0xc7);
-  _writeData (0x0c);
-  _writeData (0x0c);
+  // _writeCommand(0x06); // boost soft start
+  // _writeData (0xc7);
+  // _writeData (0x0c);
+  // _writeData (0x0c);
   _writeCommand(0x61); // resolution setting
   _writeData (0xc8); // 200
   _writeData (0x00);
   _writeData (0xc8); // 200
   _writeCommand(0x60); // Tcon setting
   _writeData (0x00);
-  _writeCommand(0x82); // VCOM DC setting
-  _writeData (0x12);
-  _writeCommand(0x30); // PLL control
-  _writeData (0x3C);   // default 50Hz
+  // _writeCommand(0x82); // VCOM DC setting
+  // _writeData (0x12);
+  // _writeCommand(0x30); // PLL control
+  // _writeData (0x3C);   // default 50Hz
   _writeCommand(0X50); // VCOM and data interval
   _writeData(0x97);//
   _writeCommand(0XE3); // power saving register

@@ -1,7 +1,8 @@
 #include "Watchy.h"
 
 DS3232RTC Watchy::RTC(false); 
-GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> Watchy::display(GxEPD2_154_D67(CS, DC, RESET, BUSY));
+GxEPD2_BW<GxEPD2_154_M09, GxEPD2_154_M09::HEIGHT> Watchy::display(GxEPD2_154_M09(CS, DC, -1, BUSY));  //set RESET to -1 to prevent resetting
+//GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> Watchy::display(GxEPD2_154_D67(CS, DC, RESET, BUSY));
 
 RTC_DATA_ATTR int guiState;
 RTC_DATA_ATTR int menuIndex;

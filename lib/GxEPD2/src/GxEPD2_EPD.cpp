@@ -116,7 +116,7 @@ void GxEPD2_EPD::_waitWhileBusy(const char* comment, uint16_t busy_time)
   {
     esp_err_t err = ESP_OK;
     //if(true){ //TODO: check if wifi/bt is on
-    gpio_wakeup_enable(GPIO_NUM_19 /*(gpio_num_t)_busy*/, GPIO_INTR_LOW_LEVEL);//enable light sleep wake on button press
+    gpio_wakeup_enable(GPIO_NUM_19 /*(gpio_num_t)_busy*/, (_busy_level == HIGH) ? GPIO_INTR_LOW_LEVEL : GPIO_INTR_HIGH_LEVEL);//enable light sleep wake on button press
     esp_sleep_enable_gpio_wakeup();
     #ifdef DEBUG_TIMING
     Serial.print("waitWhileBusy sleep start: ");

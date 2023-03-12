@@ -35,7 +35,7 @@
 #include "epd/GxEPD2_154.h"
 #include "epd/GxEPD2_154_D67.h"
 //#include "epd/GxEPD2_154_T8.h"
-//#include "epd/GxEPD2_154_M09.h"
+#include "epd/GxEPD2_154_M09.h"
 //#include "epd/GxEPD2_154_M10.h"
 //removed these displays
 // #include "epd/GxEPD2_213.h"

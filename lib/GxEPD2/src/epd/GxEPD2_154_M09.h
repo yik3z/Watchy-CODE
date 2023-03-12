@@ -26,10 +26,12 @@ class GxEPD2_154_M09 : public GxEPD2_EPD
     static const bool hasColor = false;
     static const bool hasPartialUpdate = true;
     static const bool hasFastPartialUpdate = true;
-    static const uint16_t power_on_time = 250; // ms, e.g. 206410us
-    static const uint16_t power_off_time = 100; // ms, e.g. 62091us
+    static const uint16_t power_on_time = 100; // ms, e.g. 206410us
+    static const uint16_t power_off_time = 100; // ms, e.g. 62091us, unknown
     static const uint16_t full_refresh_time = 1000; // ms, e.g. 924485us
     static const uint16_t partial_refresh_time = 400; // ms, e.g. 324440us
+
+    uint8_t borderColour = 0; //0 = black, 1 = white
     // constructor
     GxEPD2_154_M09(int8_t cs, int8_t dc, int8_t rst, int8_t busy);
     // methods (virtual)
@@ -42,6 +44,7 @@ class GxEPD2_154_M09 : public GxEPD2_EPD
     void writeImagePart(const uint8_t bitmap[], int16_t x_part, int16_t y_part, int16_t w_bitmap, int16_t h_bitmap,
                         int16_t x, int16_t y, int16_t w, int16_t h, bool invert = false, bool mirror_y = false, bool pgm = false);
     void writeImage(const uint8_t* black, const uint8_t* color, int16_t x, int16_t y, int16_t w, int16_t h, bool invert = false, bool mirror_y = false, bool pgm = false);
+    void writeImageForFullRefresh(const uint8_t bitmap[], int16_t x, int16_t y, int16_t w, int16_t h, bool invert = false, bool mirror_y = false, bool pgm = false);
     void writeImagePart(const uint8_t* black, const uint8_t* color, int16_t x_part, int16_t y_part, int16_t w_bitmap, int16_t h_bitmap,
                         int16_t x, int16_t y, int16_t w, int16_t h, bool invert = false, bool mirror_y = false, bool pgm = false);
     // write sprite of native data to controller memory, without screen refresh; x and w should be multiple of 8
