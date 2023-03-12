@@ -119,7 +119,8 @@ void GxEPD2_EPD::_waitWhileBusy(const char* comment, uint16_t busy_time)
     gpio_wakeup_enable(GPIO_NUM_19 /*(gpio_num_t)_busy*/, (_busy_level == HIGH) ? GPIO_INTR_LOW_LEVEL : GPIO_INTR_HIGH_LEVEL);//enable light sleep wake on button press
     esp_sleep_enable_gpio_wakeup();
     #ifdef DEBUG_TIMING
-    Serial.print("waitWhileBusy sleep start: ");
+    Serial.print(comment);
+    Serial.print(": waitWhileBusy sleep start: ");
     Serial.println(millis());
     #endif
     err = esp_light_sleep_start(); //successfully enters and leaves light sleep. Maybe it's automatically triggered by something
