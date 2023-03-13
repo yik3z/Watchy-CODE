@@ -133,7 +133,7 @@ void GxEPD2_EPD::_waitWhileBusy(const char* comment, uint16_t busy_time)
       Serial.print("Busy pin: ");
       Serial.println(digitalRead(_busy));
       #endif
-      delay(1); // add some margin to become active
+      delay(2); // add some margin to become active
       unsigned long start = micros();
       uint32_t freq = getCpuFrequencyMhz();
       setCpuFrequencyMhz(10); // downclock CPU to 10MHz
