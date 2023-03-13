@@ -41,11 +41,13 @@ void GxEPD2_154_M09::writeScreenBufferAgain(uint8_t value)
 
 void GxEPD2_154_M09::_writeScreenBuffer(uint8_t command, uint8_t value)
 {
-  _writeCommand(command);
+  _startTransfer();
+  _transferCommand(command);
   for (uint32_t i = 0; i < uint32_t(WIDTH) * uint32_t(HEIGHT) / 8; i++)
   {
-    _writeData(value);
+    _transfer(value);
   }
+  _endTransfer();
 }
 
 
@@ -93,7 +95,8 @@ void GxEPD2_154_M09::_writeImage(uint8_t command, const uint8_t bitmap[], int16_
   w1 -= dx;
   h1 -= dy;
   if ((w1 <= 0) || (h1 <= 0)) return;
-  _writeCommand(command);
+  _startTransfer();
+  _transferCommand(command);
   for (int16_t i = 0; i < h1; i++)
   {
     for (int16_t j = 0; j < w1 / 8; j++)
@@ -114,9 +117,10 @@ void GxEPD2_154_M09::_writeImage(uint8_t command, const uint8_t bitmap[], int16_
         data = bitmap[idx];
       }
       if (invert) data = ~data;
-      _writeData(data);
+      _transfer(data);
     }
   }
+  _endTransfer();
   #if defined(ESP8266) || defined(ESP32)
   yield(); // to avoid WDT on ESP8266 and ESP32
   #endif
@@ -138,7 +142,9 @@ void GxEPD2_154_M09::_writeImagePart(uint8_t command, const uint8_t bitmap[], in
                                      int16_t x, int16_t y, int16_t w, int16_t h, bool invert, bool mirror_y, bool pgm)
 {
   if (_initial_write) writeScreenBuffer(); // initial full screen buffer clean
-  delay(1); // yield() to avoid WDT on ESP8266 and ESP32
+  #if defined(ESP8266) || defined(ESP32)
+  yield(); // to avoid WDT on ESP8266 and ESP32
+  #endif
   if ((w_bitmap < 0) || (h_bitmap < 0) || (w < 0) || (h < 0)) return;
   if ((x_part < 0) || (x_part >= w_bitmap)) return;
   if ((y_part < 0) || (y_part >= h_bitmap)) return;
@@ -160,7 +166,8 @@ void GxEPD2_154_M09::_writeImagePart(uint8_t command, const uint8_t bitmap[], in
   if (!_using_partial_mode) _Init_Part();
   //_writeCommand(0x91); // partial in
   //_setPartialRamArea(x1, y1, w1, h1);
-  _writeCommand(command);
+  _startTransfer();
+  _transferCommand(command);
   for (int16_t i = 0; i < h1; i++)
   {
     for (int16_t j = 0; j < w1 / 8; j++)
@@ -181,11 +188,14 @@ void GxEPD2_154_M09::_writeImagePart(uint8_t command, const uint8_t bitmap[], in
         data = bitmap[idx];
       }
       if (invert) data = ~data;
-      _writeData(data);
+      _transfer(data);
     }
   }
-  _writeCommand(0x92); // partial out
-  delay(1); // yield() to avoid WDT on ESP8266 and ESP32
+  //_writeCommand(0x92); // partial out
+  _endTransfer();
+  #if defined(ESP8266) || defined(ESP32)
+  yield(); // yield() to avoid WDT on ESP8266 and ESP32
+  #endif
 }
 
 void GxEPD2_154_M09::writeImage(const uint8_t* black, const uint8_t* color, int16_t x, int16_t y, int16_t w, int16_t h, bool invert, bool mirror_y, bool pgm)
@@ -305,17 +315,19 @@ void GxEPD2_154_M09::_setPartialRamArea(uint16_t x, uint16_t y, uint16_t w, uint
   uint16_t xe = (x + w - 1) | 0x0007; // byte boundary inclusive (last byte)
   uint16_t ye = y + h - 1;
   x &= 0xFFF8; // byte boundary
-  _writeCommand(0x90); // partial window
-  //_writeData(x / 256);
-  _writeData(x % 256);
-  //_writeData(xe / 256);
-  _writeData(xe % 256);
-  _writeData(y / 256);
-  _writeData(y % 256);
-  _writeData(ye / 256);
-  _writeData(ye % 256);
-  _writeData(0x01); // don't see any difference
-  //_writeData(0x00); // don't see any difference
+  _startTransfer();
+  _transferCommand(0x90); // partial window
+  //_transfer(x / 256);
+  _transfer(x % 256);
+  //_transfer(xe / 256);
+  _transfer(xe % 256);
+  _transfer(y / 256);
+  _transfer(y % 256);
+  _transfer(ye / 256);
+  _transfer(ye % 256);
+  _transfer(0x01); // don't see any difference
+  //_transfer(0x00); // don't see any difference
+  _endTransfer();
 }
 
 void GxEPD2_154_M09::_PowerOn()
@@ -344,42 +356,44 @@ void GxEPD2_154_M09::_PowerOff()
 void GxEPD2_154_M09::_InitDisplay()
 {
   //if (_hibernating) _reset();
-  _writeCommand(0x00); // panel setting - moved to init_full and init_part
-  _writeData (0xff);  // 0xff (use LUT from register) vs 0xdf (use LUT from OTP)
-  _writeData (0x0e);
-  // _writeCommand(0x01); // power setting
-  // _writeData(0x03);
-  // _writeData(0x06); // 16V
-  // _writeData(0x2A);//
-  // _writeData(0x2A);//
-  _writeCommand(0x4D); // FITIinternal code
-  _writeData (0x55);
-  _writeCommand(0xaa); // ? Exists in sample code
-  _writeData (0x0f);
-  _writeCommand(0xE9); // ? Exists in sample code
-  _writeData (0x02);
-  _writeCommand(0xb6); // ? Exists in sample code
-  _writeData (0x11);
-  _writeCommand(0xF3); // ? Exists in sample code
-  _writeData (0x0a);
-  // _writeCommand(0x06); // boost soft start
-  // _writeData (0xc7);
-  // _writeData (0x0c);
-  // _writeData (0x0c);
-  _writeCommand(0x61); // resolution setting
-  _writeData (0xc8); // 200
-  _writeData (0x00);
-  _writeData (0xc8); // 200
-  _writeCommand(0x60); // Tcon setting
-  _writeData (0x00);
-  // _writeCommand(0x82); // VCOM DC setting
-  // _writeData (0x12);
-  // _writeCommand(0x30); // PLL control
-  // _writeData (0x3C);   // default 50Hz
-  _writeCommand(0X50); // VCOM and data interval
-  _writeData(0x97);//
-  _writeCommand(0XE3); // power saving register
-  _writeData(0x00); // default
+  _startTransfer();
+  _transferCommand(0x00); // panel setting - moved to init_full and init_part
+  _transfer (0xff);  // 0xff (use LUT from register) vs 0xdf (use LUT from OTP)
+  _transfer (0x0e);
+  // _transferCommand(0x01); // power setting
+  // _transfer(0x03);
+  // _transfer(0x06); // 16V
+  // _transfer(0x2A);//
+  // _transfer(0x2A);//
+  _transferCommand(0x4D); // FITIinternal code
+  _transfer (0x55);
+  _transferCommand(0xaa); // ? Exists in sample code
+  _transfer (0x0f);
+  _transferCommand(0xE9); // ? Exists in sample code
+  _transfer (0x02);
+  _transferCommand(0xb6); // ? Exists in sample code
+  _transfer (0x11);
+  _transferCommand(0xF3); // ? Exists in sample code
+  _transfer (0x0a);
+  // _transferCommand(0x06); // boost soft start
+  // _transfer (0xc7);
+  // _transfer (0x0c);
+  // _transfer (0x0c);
+  _transferCommand(0x61); // resolution setting
+  _transfer (0xc8); // 200
+  _transfer (0x00);
+  _transfer (0xc8); // 200
+  _transferCommand(0x60); // Tcon setting
+  _transfer (0x00);
+  // _transferCommand(0x82); // VCOM DC setting
+  // _transfer (0x12);
+  // _transferCommand(0x30); // PLL control
+  // _transfer (0x3C);   // default 50Hz
+  _transferCommand(0X50); // VCOM and data interval
+  _transfer(0x97);//
+  _transferCommand(0XE3); // power saving register
+  _transfer(0x00); // default
+  _endTransfer();
   //_PowerOn();
 }
 
