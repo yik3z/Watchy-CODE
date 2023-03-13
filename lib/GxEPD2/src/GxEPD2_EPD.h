@@ -57,7 +57,7 @@ class GxEPD2_EPD
       // most controllers with differential update do switch buffers on refresh, can use:
       writeScreenBuffer(value);
     }
-    virtual void writeImageAgain(const uint8_t bitmap[], int16_t x, int16_t y, int16_t w, int16_t h, bool invert = false, bool mirror_y = false, bool pgm = false)
+    virtual void writeImageAgain(const uint8_t bitmap[], int16_t x, int16_t y, int16_t w, int16_t h, bool partialupdate, bool invert = false, bool mirror_y = false, bool pgm = false)
     {
       // most controllers with differential update do switch buffers on refresh, can use:
       writeImage(bitmap, x, y, w, h, invert, mirror_y, pgm);

@@ -4,6 +4,9 @@ DS3232RTC Watchy::RTC(false);
 GxEPD2_BW<GxEPD2_154_M09, GxEPD2_154_M09::HEIGHT> Watchy::display(GxEPD2_154_M09(CS, DC, RESET, BUSY));  //set RESET to -1 to prevent resetting
 //GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> Watchy::display(GxEPD2_154_D67(CS, DC, RESET, BUSY));
 
+// display
+//RTC_DATA_ATTR bool display_initial_refresh = true;
+
 RTC_DATA_ATTR int guiState;
 RTC_DATA_ATTR int menuIndex;
 #ifdef USING_ACCELEROMETER
@@ -81,8 +84,8 @@ void Watchy::init(String datetime){
     // Serial.println("wire begun: " + String(millis()));
     // #endif //DEBUG_TIMING
 
-    display.init(0, false); //_initial_refresh to false to prevent full update on init
-
+    display.init(0, false);
+    //display_initial_refresh = false;  //initial refresh only needed when Watchy is booted
     // #ifdef DEBUG_TIMING
     // Serial.println("display init'd: " + String(millis()));
     // #endif //DEBUG_TIMING
@@ -153,24 +156,23 @@ void Watchy::init(String datetime){
             }
             break;
         case ESP_SLEEP_WAKEUP_EXT1: //button Press
-            lastButtonInterrupt = millis();
-            //wakeupBit = esp_sleep_get_ext1_wakeup_status(); //has been assigned earlier, before disaply.init()
-            setISRs();
-            while(true){
-                handleButtonPress();
-                if((wakeupBit == 0) || (millis() - lastButtonInterrupt > BTN_TIMEOUT)){
-                    break;
-                }
+          lastButtonInterrupt = millis();
+          //wakeupBit = esp_sleep_get_ext1_wakeup_status(); //has been assigned earlier, before disaply.init()
+          setISRs();
+          while(true){
+            handleButtonPress();
+            if((wakeupBit == 0) || (millis() - lastButtonInterrupt > BTN_TIMEOUT)){
+              break;
             }
-            break;
+          }
+          break;
         default: //reset
-            _rtcConfig(datetime);
-            bootTime = RTC.get();
-            // clear display display.init(true)?
-            //_bmaConfig(); //crashes watchy
-            vibMotor(200, 4);
-            showWatchFace(false); //full update on reset
-            break;
+          _rtcConfig(datetime);
+          bootTime = RTC.get();
+          //_bmaConfig(); //crashes watchy
+          vibMotor(200, 4);
+          showWatchFace(false); //full update on reset
+          break;
     }
 
     }

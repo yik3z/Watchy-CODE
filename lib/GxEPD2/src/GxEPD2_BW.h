@@ -192,7 +192,7 @@ class GxEPD2_BW : public GxEPD2_GFX_BASE_CLASS
       epd2.refresh(partial_update_mode);
       if (epd2.hasFastPartialUpdate)
       {
-        epd2.writeImageAgain(_buffer, 0, 0, WIDTH, _page_height);
+        epd2.writeImageAgain(_buffer, 0, 0, WIDTH, _page_height, partial_update_mode);
       }
       //if (!partial_update_mode) epd2.powerOff();
     }
