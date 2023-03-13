@@ -52,17 +52,17 @@ void GxEPD2_EPD::init(uint32_t serial_diag_bitrate, bool initial, uint16_t reset
   }
   if (_cs >= 0)
   {
-    digitalWrite(_cs, HIGH);
+    //digitalWrite(_cs, HIGH);
     pinMode(_cs, OUTPUT);
   }
   if (_dc >= 0)
   {
-    digitalWrite(_dc, HIGH);
+    //digitalWrite(_dc, HIGH);
     pinMode(_dc, OUTPUT);
   }
   if (!_pulldown_rst_mode &&_rst >= 0)
   {
-    digitalWrite(_rst, HIGH);
+    //digitalWrite(_rst, HIGH);
     pinMode(_rst, OUTPUT);
   }
   if (_busy >= 0)
