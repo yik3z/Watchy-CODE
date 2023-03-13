@@ -166,6 +166,7 @@ void Watchy::init(String datetime){
         default: //reset
             _rtcConfig(datetime);
             bootTime = RTC.get();
+            display.init(true);
             //_bmaConfig(); //crashes watchy
             vibMotor(200, 4);
             showWatchFace(false); //full update on reset

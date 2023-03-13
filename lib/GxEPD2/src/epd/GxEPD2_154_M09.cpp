@@ -52,8 +52,20 @@ void GxEPD2_154_M09::_writeScreenBuffer(uint8_t command, uint8_t value)
 //extern RTC_DATA_ATTR uint8_t old_bitmap[(200 / 8) * 200]; //hardcoded
 void GxEPD2_154_M09::writeImage(const uint8_t bitmap[], int16_t x, int16_t y, int16_t w, int16_t h, bool invert, bool mirror_y, bool pgm)
 {
-  
-  _writeCommand(0x91); // partial in
+  _Init_Part();
+  int16_t wb = (w + 7) / 8; // width bytes, bitmaps are padded
+  x -= x % 8; // byte boundary
+  w = wb * 8; // byte boundary
+  int16_t x1 = x < 0 ? 0 : x; // limit
+  int16_t y1 = y < 0 ? 0 : y; // limit
+  int16_t w1 = x + w < int16_t(WIDTH) ? w : int16_t(WIDTH) - x; // limit
+  int16_t h1 = y + h < int16_t(HEIGHT) ? h : int16_t(HEIGHT) - y; // limit
+  int16_t dx = x1 - x;
+  int16_t dy = y1 - y;
+  w1 -= dx;
+  h1 -= dy;
+  if ((w1 <= 0) || (h1 <= 0)) return;
+  _setPartialRamArea(x1, y1, w1, h1);
   _writeImage(0x13, bitmap, x, y, w, h, invert, mirror_y, pgm);
   //_writeImage(0x10, old_bitmap, x, y, w, h, invert, mirror_y, pgm);
 }
@@ -67,7 +79,7 @@ void GxEPD2_154_M09::writeImageForFullRefresh(const uint8_t bitmap[], int16_t x,
 void GxEPD2_154_M09::writeImageAgain(const uint8_t bitmap[], int16_t x, int16_t y, int16_t w, int16_t h, bool invert, bool mirror_y, bool pgm)
 {
   _writeImage(0x10, bitmap, x, y, w, h, invert, mirror_y, pgm);
-  _writeCommand(0x92); // partial out TODO: maybe move partial out here
+  _writeCommand(0x92); // partial out
 }
 
 void GxEPD2_154_M09::_writeImage(uint8_t command, const uint8_t bitmap[], int16_t x, int16_t y, int16_t w, int16_t h, bool invert, bool mirror_y, bool pgm)
@@ -88,8 +100,6 @@ void GxEPD2_154_M09::_writeImage(uint8_t command, const uint8_t bitmap[], int16_
   w1 -= dx;
   h1 -= dy;
   if ((w1 <= 0) || (h1 <= 0)) return;
-  if (!_using_partial_mode) _Init_Part();
-  _setPartialRamArea(x1, y1, w1, h1);
   _writeCommand(command);
   for (int16_t i = 0; i < h1; i++)
   {
@@ -275,10 +285,10 @@ void GxEPD2_154_M09::refresh(int16_t x, int16_t y, int16_t w, int16_t h)
   w1 -= x1 - x;
   h1 -= y1 - y;
   if (!_using_partial_mode) _Init_Part();
-  _writeCommand(0x91); // partial in  //TODO: remove?
-  _setPartialRamArea(x1, y1, w1, h1);
+  //_writeCommand(0x91); // partial in  //TODO: remove?
+  //_setPartialRamArea(x1, y1, w1, h1);
   _Update_Part();
-  _writeCommand(0x92); // partial out //TODO: remove?
+  //_writeCommand(0x92); // partial out //TODO: remove?
 }
 
 void GxEPD2_154_M09::powerOff(void)
@@ -338,12 +348,13 @@ void GxEPD2_154_M09::_PowerOff()
   }
 }
 
+// Init generic settings required for both partial and full updates. Can play around with this once the display is working ok
 void GxEPD2_154_M09::_InitDisplay()
 {
   if (_hibernating) _reset();
-  _writeCommand(0x00); // panel setting
-  _writeData (0xdf);
-  _writeData (0x0e);
+  // _writeCommand(0x00); // panel setting - moved to init_full and init_part
+  // _writeData (0xff);  // 0xff (use LUT from register) vs 0xdf (use LUT from OTP)
+  // _writeData (0x0e);
   // _writeCommand(0x01); // power setting
   // _writeData(0x03);
   // _writeData(0x06); // 16V
@@ -497,6 +508,10 @@ const unsigned char GxEPD2_154_M09::lut_24_bb_partial[] PROGMEM =
 void GxEPD2_154_M09::_Init_Full()
 {
   _InitDisplay();
+  _writeCommand(0x00); // panel setting
+  _writeData (0xff);  // 0xff (use LUT from register) vs 0xdf (use LUT from OTP)
+  _writeData (0x0e);
+  // Set LUTs for full update
   _writeCommand(0x20);
   _writeDataPGM(lut_20_vcomDC, sizeof(lut_20_vcomDC));
   _writeCommand(0x21);
@@ -507,13 +522,18 @@ void GxEPD2_154_M09::_Init_Full()
   _writeDataPGM(lut_23_wb, sizeof(lut_23_wb));
   _writeCommand(0x24);
   _writeDataPGM(lut_24_bb, sizeof(lut_24_bb));
-  _PowerOn();
+  //_PowerOn(); // moved to _Update_Full()
   _using_partial_mode = false;
 }
 
+// Sets the display up in partial mode
 void GxEPD2_154_M09::_Init_Part()
 {
   _InitDisplay();
+  _writeCommand(0x00); // panel setting
+  _writeData (0xff);  // 0xff (use LUT from register) vs 0xdf (use LUT from OTP)
+  _writeData (0x0e);
+  // Set LUTs for partial update
   _writeCommand(0x20);
   _writeDataPGM(lut_20_vcomDC_partial, sizeof(lut_20_vcomDC_partial));
   _writeCommand(0x21);
@@ -524,18 +544,22 @@ void GxEPD2_154_M09::_Init_Part()
   _writeDataPGM(lut_23_wb_partial, sizeof(lut_23_wb_partial));
   _writeCommand(0x24);
   _writeDataPGM(lut_24_bb_partial, sizeof(lut_24_bb_partial));
-  _PowerOn();
+
+  _writeCommand(0x91); // partial in
+    //_PowerOn(); // moved to _Update_Part()
   _using_partial_mode = true;
 }
 
 void GxEPD2_154_M09::_Update_Full()
 {
+  _PowerOn();
   _writeCommand(0x12); //display refresh
   _waitWhileBusy("_Update_Full", full_refresh_time);
 }
 
 void GxEPD2_154_M09::_Update_Part()
 {
+  _PowerOn();
   _writeCommand(0x12); //display refresh
   _waitWhileBusy("_Update_Part", partial_refresh_time);
 }
