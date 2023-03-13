@@ -357,24 +357,29 @@ void GxEPD2_154_M09::_InitDisplay()
 {
   //if (_hibernating) _reset();
   _startTransfer();
-  _transferCommand(0x00); // panel setting - moved to init_full and init_part
-  _transfer (0xff);  // 0xff (use LUT from register) vs 0xdf (use LUT from OTP)
-  _transfer (0x0e);
+  // _transferCommand(0x00); // panel setting - moved to init_full and init_part
+  // _transfer (0xdf);  // 0xff (use LUT from register) vs 0xdf (use LUT from OTP)
+  // _transfer (0x0e);
   // _transferCommand(0x01); // power setting
   // _transfer(0x03);
   // _transfer(0x06); // 16V
   // _transfer(0x2A);//
   // _transfer(0x2A);//
-  _transferCommand(0x4D); // FITIinternal code
-  _transfer (0x55);
-  _transferCommand(0xaa); // ? Exists in sample code
-  _transfer (0x0f);
-  _transferCommand(0xE9); // ? Exists in sample code
-  _transfer (0x02);
-  _transferCommand(0xb6); // ? Exists in sample code
-  _transfer (0x11);
-  _transferCommand(0xF3); // ? Exists in sample code
-  _transfer (0x0a);
+  _transferCommand(0x01); // power setting
+  _transfer(0x03);
+  _transfer(0x0c); // 22V
+  _transfer(0x39); // -15V
+  _transfer(0x39); // -15V
+  // _transferCommand(0x4D); // FITIinternal code
+  // _transfer(0x55);
+  // _transferCommand(0xaa); // ? Exists in sample code
+  // _transfer(0x0f);
+  // _transferCommand(0xE9); // ? Exists in sample code
+  // _transfer(0x02);
+  // _transferCommand(0xb6); // ? Exists in sample code
+  // _transfer(0x11);
+  // _transferCommand(0xF3); // ? Exists in sample code
+  // _transfer(0x0a);
   // _transferCommand(0x06); // boost soft start
   // _transfer (0xc7);
   // _transfer (0x0c);
@@ -515,20 +520,24 @@ const unsigned char GxEPD2_154_M09::lut_24_bb_partial[] PROGMEM =
 void GxEPD2_154_M09::_Init_Full()
 {
   _InitDisplay();
-  // _writeCommand(0x00); // panel setting
-  // _writeData (0xff);  // 0xff (use LUT from register) vs 0xdf (use LUT from OTP)
-  // _writeData (0x0e);
-  // Set LUTs for full update
-  _writeCommand(0x20);
-  _writeDataPGM(lut_20_vcomDC, sizeof(lut_20_vcomDC));
-  _writeCommand(0x21);
-  _writeDataPGM(lut_21_ww, sizeof(lut_21_ww));
-  _writeCommand(0x22);
-  _writeDataPGM(lut_22_bw, sizeof(lut_22_bw));
-  _writeCommand(0x23);
-  _writeDataPGM(lut_23_wb, sizeof(lut_23_wb));
-  _writeCommand(0x24);
-  _writeDataPGM(lut_24_bb, sizeof(lut_24_bb));
+
+  _startTransfer();
+  _transferCommand(0x00); // panel setting
+  _transfer(0xdf);  // 0xff (use LUT from register) vs 0xdf (use LUT from OTP)
+  _transfer(0x0e);
+  // // Set LUTs for full update
+  // _transferCommand(0x20);
+  // _transferDataPGM(lut_20_vcomDC, sizeof(lut_20_vcomDC));
+  // _transferCommand(0x21);
+  // _transferDataPGM(lut_21_ww, sizeof(lut_21_ww));
+  // _transferCommand(0x22);
+  // _transferDataPGM(lut_22_bw, sizeof(lut_22_bw));
+  // _transferCommand(0x23);
+  // _transferDataPGM(lut_23_wb, sizeof(lut_23_wb));
+  // _transferCommand(0x24);
+  // _transferDataPGM(lut_24_bb, sizeof(lut_24_bb));
+  _endTransfer();
+
   _PowerOn();
   _using_partial_mode = false;
 }
@@ -537,22 +546,24 @@ void GxEPD2_154_M09::_Init_Full()
 void GxEPD2_154_M09::_Init_Part()
 {
   _InitDisplay();
-  // _writeCommand(0x00); // panel setting
-  // _writeData (0xff);  // 0xff (use LUT from register) vs 0xdf (use LUT from OTP)
-  // _writeData (0x0e);
-  // Set LUTs for partial update
-  // _writeCommand(0x20);
-  _writeDataPGM(lut_20_vcomDC_partial, sizeof(lut_20_vcomDC_partial));
-  _writeCommand(0x21);
-  _writeDataPGM(lut_21_ww_partial, sizeof(lut_21_ww_partial));
-  _writeCommand(0x22);
-  _writeDataPGM(lut_22_bw_partial, sizeof(lut_22_bw_partial));
-  _writeCommand(0x23);
-  _writeDataPGM(lut_23_wb_partial, sizeof(lut_23_wb_partial));
-  _writeCommand(0x24);
-  _writeDataPGM(lut_24_bb_partial, sizeof(lut_24_bb_partial));
 
-  //_writeCommand(0x91); // partial in
+  _startTransfer();
+  _transferCommand(0x00); // panel setting
+  _transfer(0xff);  // 0xff (use LUT from register) vs 0xdf (use LUT from OTP)
+  _transfer(0x0e);
+  // Set LUTs for partial update
+  _transferCommand(0x20);
+  _transferDataPGM(lut_20_vcomDC_partial, sizeof(lut_20_vcomDC_partial));
+  _transferCommand(0x21);
+  _transferDataPGM(lut_21_ww_partial, sizeof(lut_21_ww_partial));
+  _transferCommand(0x22);
+  _transferDataPGM(lut_22_bw_partial, sizeof(lut_22_bw_partial));
+  _transferCommand(0x23);
+  _transferDataPGM(lut_23_wb_partial, sizeof(lut_23_wb_partial));
+  _transferCommand(0x24);
+  _transferDataPGM(lut_24_bb_partial, sizeof(lut_24_bb_partial));
+  _endTransfer();
+  //_writeCommand(0x91); // partial in, doesn't really work
   _PowerOn();
   _using_partial_mode = true;
 }

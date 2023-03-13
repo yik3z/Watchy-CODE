@@ -296,6 +296,18 @@ void GxEPD2_EPD::_transferCommand(uint8_t value)
   if (_dc >= 0) digitalWrite(_dc, HIGH);
 }
 
+void GxEPD2_EPD::_transferDataPGM(const uint8_t* data, uint16_t n, int16_t fill_with_zeroes)
+{
+  for (uint16_t i = 0; i < n; i++)
+  {
+    SPI.transfer(pgm_read_byte(&*data++));
+  }
+  while (fill_with_zeroes > 0)
+  {
+    SPI.transfer(0x00);
+    fill_with_zeroes--;
+  }
+}
 
 void GxEPD2_EPD::_endTransfer()
 {
