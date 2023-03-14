@@ -365,11 +365,11 @@ void GxEPD2_154_M09::_InitDisplay()
   // _transfer(0x06); // 16V
   // _transfer(0x2A);//
   // _transfer(0x2A);//
-  _transferCommand(0x01); // power setting
-  _transfer(0x03);
-  _transfer(0x0a); // 20V   (Default)
-  _transfer(0x39); // -15V  (Default)
-  _transfer(0x39); // -15V  (Default)
+  // _transferCommand(0x01); // power setting
+  // _transfer(0x03);
+  // _transfer(0x0a); // 20V   (Default)
+  // _transfer(0x39); // -15V  (Default)
+  // _transfer(0x39); // -15V  (Default)
   // _transferCommand(0x4D); // FITIinternal code
   // _transfer(0x55);
   // _transferCommand(0xaa); // ? Exists in sample code
@@ -579,7 +579,7 @@ const unsigned char GxEPD2_154_M09::lut_24_bb_partial[] PROGMEM =
 void GxEPD2_154_M09::_Init_Full()
 {
   _InitDisplay();
-
+  // if full update looks slow or wonky, then enable use LUT from register here (0xdf and uncomment set LUT)
   _startTransfer();
   _transferCommand(0x00); // panel setting
   _transfer(0xdf);  // 0xff (use LUT from register) vs 0xdf (use LUT from OTP)
