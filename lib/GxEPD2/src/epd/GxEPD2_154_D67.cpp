@@ -361,9 +361,15 @@ void GxEPD2_154_D67::_InitDisplay()
   delay(10); // 10ms according to specs
   _startTransfer();
   _transferCommand(0x01); // Driver output control
-  _transfer(0xC7);
+  _transfer(0xC7);        // Default
   _transfer(0x00);
   _transfer(0x00);
+  _transferCommand(0x03); // Gate Driving Voltage
+  _transfer(0x03);        // 10V
+  _transferCommand(0x04); // Source Driving Voltage
+  _transfer(0xc1);        // VSH1 7.5 V
+  _transfer(0x8f);        // VSH2 2.5 V
+  _transfer(0x14);        // VSL -7.5 V
   _transferCommand(0x3C); // BorderWavefrom
   _transfer(borderColour ? 0x02 : 0x05);    //0x05 for white or 0x02 for black border
   _transferCommand(0x18); // Read built-in temperature sensor
