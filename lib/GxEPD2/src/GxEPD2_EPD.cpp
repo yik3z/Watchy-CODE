@@ -65,6 +65,10 @@ void GxEPD2_EPD::init(uint32_t serial_diag_bitrate, bool initial, uint16_t reset
     digitalWrite(_rst, HIGH);
     pinMode(_rst, OUTPUT);
   }
+  if (_busy >= 0)
+  {
+    pinMode(_busy, INPUT);
+  }
   #ifdef DEBUG_TIMING
   Serial.println("pre reset(): " + String(millis()));
   #endif //DEBUG_TIMING
@@ -72,10 +76,6 @@ void GxEPD2_EPD::init(uint32_t serial_diag_bitrate, bool initial, uint16_t reset
   #ifdef DEBUG_TIMING
   Serial.println("post reset(): " + String(millis()));
   #endif //DEBUG_TIMING
-  if (_busy >= 0)
-  {
-    pinMode(_busy, INPUT);
-  }
   SPI.begin();
   #ifdef DEBUG_TIMING
   Serial.println("spi begun, display init'd: " + String(millis()));

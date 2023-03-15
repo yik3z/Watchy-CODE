@@ -15,8 +15,8 @@
 
 #include "GxEPD2_154_D67.h"
 
-GxEPD2_154_D67::GxEPD2_154_D67(int8_t cs, int8_t dc, int8_t rst, int8_t busy) :
-  GxEPD2_EPD(cs, dc, rst, busy, HIGH, 10000000, WIDTH, HEIGHT, panel, hasColor, hasPartialUpdate, hasFastPartialUpdate)
+GxEPD2_154_D67::GxEPD2_154_D67(int8_t cs, int8_t dc, int8_t rst, int8_t busy) : // busy timeout changed to 5s
+  GxEPD2_EPD(cs, dc, rst, busy, HIGH, 5000000, WIDTH, HEIGHT, panel, hasColor, hasPartialUpdate, hasFastPartialUpdate)
 {
 }
 
@@ -400,7 +400,7 @@ void GxEPD2_154_D67::_Update_Full()
   #endif //DEBUG_TIMING
   _startTransfer();
   _transferCommand(0x22);
-  _transfer(0xf4); //was 0xf4, supposed to be 0xf7??
+  _transfer(0xf7); //was 0xf4, supposed to be 0xf7??
   _transferCommand(0x20);
   _endTransfer();
   _waitWhileBusy("_Update_Full", full_refresh_time);
@@ -416,7 +416,7 @@ void GxEPD2_154_D67::_Update_Part()
   #endif //DEBUG_TIMING
   _startTransfer();
   _transferCommand(0x22);
-  _transfer(0xfc);   //was 0xfc, supposd to be 0xff??
+  _transfer(0xff);   //was 0xfc, supposd to be 0xff??
   _transferCommand(0x20);
   _endTransfer();
   _waitWhileBusy("_Update_Part", partial_refresh_time);  
