@@ -364,8 +364,8 @@ void GxEPD2_154_D67::_InitDisplay()
   _transfer(0xC7);        // Default
   _transfer(0x00);        // Default
   _transfer(0x00);        // Default
-  // _transferCommand(0x03); // Gate Driving Voltage. DISABLED becuase it causes display to fade with partial updates
-  // _transfer(0x03);        // 10V
+  // _transferCommand(0x03); // Gate Driving Voltage. 
+  // _transfer(0x0d);        // 15V
   // _transferCommand(0x04); // Source Driving Voltage
   // _transfer(0xc1);        // VSH1 7.5 V
   // _transfer(0x8f);        // VSH2 2.5 V
