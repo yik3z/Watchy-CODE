@@ -4,8 +4,11 @@
 #include <Arduino.h>
 #include <HTTPClient.h>
 #include <Arduino_JSON.h>
+
 #include <DS3232RTC.h>
 #include <GxEPD2_BW.h>
+#include <FT6336.h>
+
 #include <Wire.h>
 #include <Fonts/FreeMonoBold9pt7b.h>
 //#include "DIN_Black35pt7b.h"
@@ -39,6 +42,7 @@ class Watchy {
     public:
         static DS3232RTC RTC;
         static GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> display;
+        static FT6336 ts;
         tmElements_t currentTime;
         esp_adc_cal_characteristics_t adc_chars;
         esp_sleep_wakeup_cause_t wakeup_reason;
