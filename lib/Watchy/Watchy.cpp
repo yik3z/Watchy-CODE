@@ -78,9 +78,6 @@ void Watchy::init(String datetime){
 
     Wire.begin(SDA, SCL); //init i2c
 
-    // #ifdef DEBUG_TIMING
-    // Serial.println("wire begun: " + String(millis()));
-    // #endif //DEBUG_TIMING
     if(wakeupBit & TS_INT_PIN_MASK){
       touchLocation = ts.getPoint(); 
       #ifdef DEBUG
@@ -414,7 +411,10 @@ void Watchy::handleButtonPress(){
     }
   }
   // TODO: add touch
-  //   else if (wakeupBit & TS_INT_PIN_MASK){
+  else if (wakeupBit & TS_INT_PIN_MASK){
+    wakeupBit = 0;
+
+  }
 }   //handleButtonPress
 
 //scrolling menu by Alex Story
