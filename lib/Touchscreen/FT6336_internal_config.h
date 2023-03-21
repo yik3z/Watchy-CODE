@@ -1,8 +1,6 @@
 #ifndef FT6336_INTERNAL_CONFIG
 #define FT6336_INTERNAL_CONFIG
 
-#define DEBUG_TOUCHSCREEN                   // flag to print debug messages to serial
-
 #define FT6336_ADDR                   0x38  // Touchscreen I2C address
 #define FT6336_REG_NUMTOUCHES         0x02  // Number of touch points
 

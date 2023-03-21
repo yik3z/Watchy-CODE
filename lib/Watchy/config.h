@@ -1,10 +1,10 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-//#define DEBUG             //enable printing of general debug messages
+#define DEBUG             //enable printing of general debug messages
   #ifdef DEBUG
   //#define DEBUG_CALENDAR    //enable printing of calendar debug messages
-  //#define DEBUG_TIMING        //enable printing of timinings (millis())
+  #define DEBUG_TIMING        //enable printing of timinings (millis())
   //#define DEBUG_POWERSAVER  //enable printing of power saver - related messages
   #endif //DEBUG
 #define INCLUDE_WEATHER
@@ -18,8 +18,8 @@
 #define DC 10
 #define RESET 9
 #define BUSY 19
-#define TS_RESET_PIN     GPIO_NUM_0   //TODO: define
-#define TS_INTERRUPT_PIN GPIO_NUM_13  //TODO: define
+#define TS_RESET_PIN     GPIO_NUM_0   //TODO: Not connected
+#define TS_INTERRUPT_PIN GPIO_NUM_34
 #define VIB_MOTOR_PIN 13
 #define MENU_BTN_PIN 2
 #define BACK_BTN_PIN 25
@@ -30,8 +30,8 @@
 #define UP_BTN_MASK GPIO_SEL_32
 #define DOWN_BTN_MASK GPIO_SEL_4
 #define ACC_INT_MASK GPIO_SEL_14
-#define TS_INT_PIN_MASK GPIO_SEL_13 //TODO: define
-#define BTN_PIN_MASK MENU_BTN_MASK|BACK_BTN_MASK|UP_BTN_MASK|DOWN_BTN_MASK
+#define TS_INT_PIN_MASK GPIO_SEL_34 
+#define BTN_PIN_MASK MENU_BTN_MASK|BACK_BTN_MASK|UP_BTN_MASK|DOWN_BTN_MASK|TS_INT_PIN_MASK
 
 //display
 #define DISPLAY_WIDTH 200

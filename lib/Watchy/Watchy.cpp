@@ -21,6 +21,7 @@ RTC_DATA_ATTR uint8_t lowBatt = 0;  //0 = normal, 1 = low, 2 = critical
 RTC_DATA_ATTR bool powerSaver = 0;  // user-selectable power saver mode
 RTC_DATA_ATTR bool hourlyTimeUpdate = 0;
 volatile uint64_t wakeupBit;
+TS_Point touchLocation;
 RTC_DATA_ATTR time_t lastNtpSync = 0;
 RTC_DATA_ATTR bool lastNtpSyncSuccess = false;
 RTC_DATA_ATTR time_t bootTime = 0;
@@ -80,7 +81,15 @@ void Watchy::init(String datetime){
     // #ifdef DEBUG_TIMING
     // Serial.println("wire begun: " + String(millis()));
     // #endif //DEBUG_TIMING
-
+    if(wakeupBit & TS_INT_PIN_MASK){
+      touchLocation = ts.getPoint(); 
+      #ifdef DEBUG
+      Serial.print("Screen touched. x: ");
+      Serial.print(touchLocation.x);
+      Serial.print(" | y: ");
+      Serial.print(touchLocation.y);
+      #endif
+    }
     display.init(0, false); //_initial_refresh to false to prevent full update on init
 
     // #ifdef DEBUG_TIMING
@@ -118,58 +127,59 @@ void Watchy::init(String datetime){
     else{
     switch (wakeup_reason)
     {
-        case ESP_SLEEP_WAKEUP_EXT0: //RTC Alarm
-            RTC.alarm(ALARM_2); //resets the alarm flag in the RTC
-            if(guiState == WATCHFACE_STATE){
-                RTC.read(currentTime);
-                if((currentTime.Hour == 3) && (currentTime.Minute == 0)){ //full refresh + internet sync late at night
-                    internetSyncCounter++;
-                    if (internetSyncCounter>INTERNET_SYNC_INTERVAL){
-                      syncInternetStuff();
-                    }
-                    showWatchFace(false);
-                } else showWatchFace(true); //partial updates on tick
-            }
-            #ifdef NIGHT_HOURLY_TIME_UPDATE
-            if((hourlyTimeUpdate == 0) && (currentTime.Hour >= NIGHT_HOURS_START) && (currentTime.Hour < NIGHT_HOURS_END)){  //set to update every hour from NIGHT_HOURS_START onwards //
-                RTC.setAlarm(ALM2_MATCH_MINUTES, 0, 0, 0, 0);   //set RTC alarm to hourly (0th minute of the hour)
-                hourlyTimeUpdate = 1;
-                #ifdef DEBUG_POWERSAVER
-                Serial.print("hourlyTimeUpdate: ");
-                Serial.println(hourlyTimeUpdate);
-                Serial.println("ALM2_MATCH_MINUTES: 0");
-                #endif  //DEBUG_POWERSAVER
-            }
-            else if((hourlyTimeUpdate == 1) && (currentTime.Hour >= NIGHT_HOURS_END)){  //set to update every minute from 7:00am onwards 
-          //else if(currentTime.Hour == 7 && currentTime.Minute == 0){ 
-                RTC.setAlarm(ALM2_EVERY_MINUTE, 0, 0, 0, 0);  //set alarm back to 
-                hourlyTimeUpdate = 0; 
-                #ifdef DEBUG_POWERSAVER
-                Serial.print("hourlyTimeUpdate: ");
-                Serial.println(hourlyTimeUpdate);
-                Serial.println("ALM2_EVERY_MINUTE");
-                #endif  //DEBUG_POWERSAVER
-            #endif  //NIGHT_HOURLY_TIME_UPDATE
-            }
-            break;
-        case ESP_SLEEP_WAKEUP_EXT1: //button Press
-            lastButtonInterrupt = millis();
-            //wakeupBit = esp_sleep_get_ext1_wakeup_status(); //has been assigned earlier, before disaply.init()
-            setISRs();
-            while(true){
-                handleButtonPress();
-                if((wakeupBit == 0) || (millis() - lastButtonInterrupt > BTN_TIMEOUT)){
-                    break;
-                }
-            }
-            break;
-        default: //reset
-            _rtcConfig(datetime);
-            bootTime = RTC.get();
-            //_bmaConfig(); //crashes watchy
-            vibMotor(200, 4);
-            showWatchFace(false); //full update on reset
-            break;
+      case ESP_SLEEP_WAKEUP_EXT0: //RTC Alarm
+          RTC.alarm(ALARM_2); //resets the alarm flag in the RTC
+          if(guiState == WATCHFACE_STATE){
+              RTC.read(currentTime);
+              if((currentTime.Hour == 3) && (currentTime.Minute == 0)){ //full refresh + internet sync late at night
+                  internetSyncCounter++;
+                  if (internetSyncCounter>INTERNET_SYNC_INTERVAL){
+                    syncInternetStuff();
+                  }
+                  showWatchFace(false);
+              } else showWatchFace(true); //partial updates on tick
+          }
+          #ifdef NIGHT_HOURLY_TIME_UPDATE
+          if((hourlyTimeUpdate == 0) && (currentTime.Hour >= NIGHT_HOURS_START) && (currentTime.Hour < NIGHT_HOURS_END)){  //set to update every hour from NIGHT_HOURS_START onwards //
+              RTC.setAlarm(ALM2_MATCH_MINUTES, 0, 0, 0, 0);   //set RTC alarm to hourly (0th minute of the hour)
+              hourlyTimeUpdate = 1;
+              #ifdef DEBUG_POWERSAVER
+              Serial.print("hourlyTimeUpdate: ");
+              Serial.println(hourlyTimeUpdate);
+              Serial.println("ALM2_MATCH_MINUTES: 0");
+              #endif  //DEBUG_POWERSAVER
+          }
+          else if((hourlyTimeUpdate == 1) && (currentTime.Hour >= NIGHT_HOURS_END)){  //set to update every minute from 7:00am onwards 
+        //else if(currentTime.Hour == 7 && currentTime.Minute == 0){ 
+              RTC.setAlarm(ALM2_EVERY_MINUTE, 0, 0, 0, 0);  //set alarm back to 
+              hourlyTimeUpdate = 0; 
+              #ifdef DEBUG_POWERSAVER
+              Serial.print("hourlyTimeUpdate: ");
+              Serial.println(hourlyTimeUpdate);
+              Serial.println("ALM2_EVERY_MINUTE");
+              #endif  //DEBUG_POWERSAVER
+          #endif  //NIGHT_HOURLY_TIME_UPDATE
+          }
+          break;
+      case ESP_SLEEP_WAKEUP_EXT1: //button Press
+          lastButtonInterrupt = millis();
+          //wakeupBit = esp_sleep_get_ext1_wakeup_status(); //has been assigned earlier, before display.init()
+          setISRs();
+          while(true){
+              handleButtonPress();
+              if((wakeupBit == 0) || (millis() - lastButtonInterrupt > BTN_TIMEOUT)){
+                  break;
+              }
+          }
+          break;
+      default: //reset
+          _rtcConfig(datetime);
+          bootTime = RTC.get();
+          ts.begin();
+          //_bmaConfig(); //crashes watchy
+          vibMotor(200, 4);
+          showWatchFace(false); //full update on reset
+          break;
     }
 
     }
@@ -403,6 +413,8 @@ void Watchy::handleButtonPress(){
         }
     }
   }
+  // TODO: add touch
+  //   else if (wakeupBit & TS_INT_PIN_MASK){
 }   //handleButtonPress
 
 //scrolling menu by Alex Story
@@ -467,6 +479,7 @@ void Watchy::deepSleep(){ //TODO: set all pins to inputs to save power??
   #endif //DEBUG_TIMING
 
   display.hibernate();
+  ts.setPowerMode(FT6336_PWR_MODE_MONITOR); // set touchscreen to monitor (low power) mode 
   esp_sleep_enable_ext0_wakeup(RTC_PIN, 0); //enable deep sleep wake on RTC interrupt
   esp_sleep_enable_ext1_wakeup(BTN_PIN_MASK, ESP_EXT1_WAKEUP_ANY_HIGH); //enable deep sleep wake on button press
   adc_power_off();

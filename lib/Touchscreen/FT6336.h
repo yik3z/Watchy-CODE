@@ -9,6 +9,7 @@
 #include "Arduino.h"
 #include <Wire.h>
 
+#define DEBUG_TOUCHSCREEN                   // flag to print debug messages to serial
 
 #define FT6336_DEFAULT_THRESHOLD 128 // Default threshold for touch detection
 

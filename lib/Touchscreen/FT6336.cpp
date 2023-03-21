@@ -164,8 +164,8 @@ uint8_t FT6336::getPowerMode(void) {
 
 /**************************************************************************/
 /*!
-    @brief  Sets the panel power mode (touches will not be registered).
-    @returns None at the moment
+    @brief  Sets the panel power mode. Hibernate does not work
+    @returns None
 */
 /**************************************************************************/
 void FT6336::setPowerMode(uint8_t pwrMode) {
@@ -187,7 +187,7 @@ bool FT6336::wakePanel(void) {
     // pinMode(rstPin, INPUT);
     digitalWrite(intPin, LOW);
     pinMode(intPin, OUTPUT);
-    delayMicroseconds(600); //between 0.5-1ms for int or >1ms for rst
+    delay(10); //between 0.5-1ms for int or >1ms for rst
     pinMode(rstPin, INPUT);
   }
   return false; //change to true when it works
