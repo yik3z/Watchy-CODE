@@ -21,7 +21,7 @@ extern RTC_DATA_ATTR int calendarLength;
 /*!
  * @brief Displays a GUI and buzzes the motor for a few seconds
  */
-void Watchy::showBuzz(){
+void Watchy::showBuzz(uint8_t btnPin){
     #ifdef DEBUG
     Serial.println("App: Vib");
     #endif
@@ -35,6 +35,24 @@ void Watchy::showBuzz(){
     display.display(false, darkMode); //full refresh
     vibMotor();
     showMenu(menuIndex, false);    
+}
+
+/*!
+ * @brief Displays a screen with all the clock-related apps
+ */
+void Watchy::showClockMenu(uint8_t btnPin){
+    #ifdef DEBUG
+    Serial.println("App: Vib");
+    #endif
+    guiState = APP_STATE;
+    // display.setFullWindow();
+    // display.fillScreen(bgColour);
+    // display.setFont(&FreeMonoBold9pt7b);
+    // display.setTextColor(fgColour);
+    // display.setCursor(70, 80);
+    // display.println("Buzz!");
+    // show boxes with clock
+    display.display(true, darkMode); //full refresh 
 }
 
 /*! 
@@ -325,7 +343,7 @@ void Watchy::showCalendar(uint8_t btnPin){
 	display.display(true, darkMode); //partial refresh (true)
 }
 
-void Watchy::connectWiFiGUI(){
+void Watchy::connectWiFiGUI(uint8_t btnPin){
     #ifdef DEBUG
     Serial.println("App: WiFi");
     #endif
@@ -553,7 +571,7 @@ void Watchy::setDarkMode(uint8_t btnPin){
 }
 
 //  GUI to allow the user to manually set the date and time
-void Watchy::setTime(){
+void Watchy::setTime(uint8_t btnPin){
     #ifdef DEBUG
     Serial.println("App: SetTime");
     #endif
@@ -735,7 +753,7 @@ void Watchy::showTemperature(uint8_t btnPin){
 
 
 #ifdef USING_ACCELEROMETER
-void Watchy::showAccelerometer(){
+void Watchy::showAccelerometer(uint8_t btnPin){
     guiState = APP_STATE;
     display.setFullWindow();
     display.fillScreen(bgColour);

@@ -51,6 +51,9 @@ class Watchy {
         Watchy();
         void init(String datetime = "");
         void handleButtonPress();
+        void handleInput();
+        void watchfaceInteractionHandler();
+        void appInteractionHandler();
         void setISRs();
         void deepSleep();
 
@@ -68,17 +71,18 @@ class Watchy {
 
         //apps
         void showStats(uint8_t btnPin = 0);
-        void showBuzz();
+        void showBuzz(uint8_t btnPin = 0);
         void showCalendar(uint8_t btnPin = 0);
-        void connectWiFiGUI();
+        void connectWiFiGUI(uint8_t btnPin = 0);
+        void showClockMenu(uint8_t btnPin = 0);
         void stopWatch(uint8_t btnPin = 0);
         void setDarkMode(uint8_t btnPin = 0);
         void setPowerSaver(uint8_t btnPin = 0);
-        void setTime();
+        void setTime(uint8_t btnPin = 0);
         void wifiOta(uint8_t btnPin = 0);
         //void setupBLE();  //not yet created...or maybe a separate file for that
         #ifdef USING_ACCELEROMETER
-        void showAccelerometer();
+        void showAccelerometer(uint8_t btnPin = 0);
         void showTemperature(uint8_t btnPin = 0);
         #endif //USING_ACCELEROMETER
         #ifdef INCLUDE_WEATHER
@@ -88,6 +92,7 @@ class Watchy {
     private:
         void _rtcConfig(String datetime);    
         void _bmaConfig();
+        bool _tpWithinBounds(uint8_t minX, uint8_t maxX, uint8_t minY, uint8_t maxY);
         #ifdef DEBUG
         void _printCpuSettings();
         #endif

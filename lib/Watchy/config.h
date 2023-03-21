@@ -54,7 +54,7 @@
 #define WATCHFACE_STATE -1
 #define MAIN_MENU_STATE 0
 #define APP_STATE 1
-#define FAST_MENU_SLEEP_TIMEOUT 2000
+//#define FAST_MENU_SLEEP_TIMEOUT 2000
 
 // for menu GUI
 #define MENU_HEIGHT 30

@@ -184,6 +184,115 @@ void Watchy::init(String datetime){
 }
 
 /***************  BUTTON HANDLER ***************/
+
+/* 
+ * Updated handler for button and touchscreen events
+*/
+void Watchy::handleInput(){
+  #ifdef DEBUG
+  //Serial.println("Enter Loop (buttonpress)");
+  #endif //DEBUG
+
+  // Global button overrides
+  // back button always goes to watch face
+  if (wakeupBit & BACK_BTN_MASK){ 
+    if (guiState != WATCHFACE_STATE){
+      RTC.alarm(ALARM_2); //resets the alarm flag in the RTC
+      RTC.read(currentTime);
+      showWatchFace(false);
+      return;
+    }
+  }
+  
+  // GUI state-based event handling
+  if (guiState == WATCHFACE_STATE)
+  {
+    watchfaceInteractionHandler();
+  }
+  else if (guiState == MAIN_MENU_STATE)
+  {
+    // enter menu, scroll or exit to watchface
+  }
+  else if (guiState == APP_STATE)
+  {
+    // let the app handle it
+  }
+}   //handleInput
+
+// Handles button and touch events on the watchface
+void Watchy::watchfaceInteractionHandler(){
+  if (wakeupBit & MENU_BTN_MASK){
+    showMenu(menuIndex, true);
+  } else if (wakeupBit & BACK_BTN_MASK){  
+    // update watch face (for middle fo the night when the watch updates only hourly)
+    RTC.read(currentTime);
+    showWatchFace(true);
+  } else if(wakeupBit & TS_INT_PIN_MASK){
+    if(_tpWithinBounds(15,185,50,130)){
+      showClockMenu();
+    }else if(_tpWithinBounds(7,193,145,195)){
+      showCalendar();
+    }else if(_tpWithinBounds(0,200,0,15)){
+      showStats();
+    }
+  }
+}
+
+// Dispatches the interaction event to the correct app
+void Watchy::appInteractionHandler(){
+  switch(menuIndex)
+  {
+    case 0:
+      showStats(wakeupBit);
+      break;
+    case 1:
+      showBuzz(wakeupBit);
+      break;          
+    case 2:
+      showCalendar(wakeupBit);
+      break;
+    case 3:
+      setTime(wakeupBit);
+      break;
+    case 4:
+      setDarkMode(wakeupBit);
+      break;   
+    case 5:
+      setPowerSaver(wakeupBit);      
+      break;           
+    case 6:
+      #ifdef USING_ACCELEROMETER
+      //showTemperature(wakeupBit);
+      #endif //USING_ACCELEROMETER
+      break;
+    case 7:
+      stopWatch(wakeupBit);
+      break;
+    case 8:
+      connectWiFiGUI(wakeupBit);
+      break;
+    case 9:
+      wifiOta(wakeupBit);
+      break;
+    default:
+      break;                              
+  }
+}
+
+// checks whether the existing touch point is within the bounds
+bool Watchy::_tpWithinBounds(uint8_t minX, uint8_t maxX, uint8_t minY, uint8_t maxY){
+  if (touchLocation.x<minX){
+    return false;
+  } else if (touchLocation.x>maxX){
+    return false;
+  } else if (touchLocation.y<minY){
+    return false;
+  } else if (touchLocation.y>maxY){
+    return false;
+  }
+  return true;
+}
+
 /* add the buttons for your apps here. 
 TODO: Change to filter by app state first
 */
@@ -268,12 +377,12 @@ void Watchy::handleButtonPress(){
         case 6:
           //showTemperature();      /disabled
           break;
-	    case 7:
-		  stopWatch(MENU_BTN_PIN);
-		  break;
+        case 7:
+          stopWatch(MENU_BTN_PIN);
+          break;
         case 8:
-		  //connectWiFiGUI();
-		  break;
+          //connectWiFiGUI();
+          break;
         case 9:
           //wifiOta();
           break;
@@ -413,7 +522,6 @@ void Watchy::handleButtonPress(){
   // TODO: add touch
   else if (wakeupBit & TS_INT_PIN_MASK){
     wakeupBit = 0;
-
   }
 }   //handleButtonPress
 
