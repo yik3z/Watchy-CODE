@@ -61,8 +61,8 @@ boolean FT6336::begin(uint8_t thresh) {
 
   // change threshhold to be higher/lower
   writeRegister8(FT6336_REG_THRESHHOLD, thresh);
-  writeRegister8(FT6336_REG_AUTO_MONITOR_MODE, 0);                        // disable auto monitor mode
-  //writeRegister8(FT6336_REG_TIME_ENTER_MONITOR, 1);                     // (DISABLED) switch to monitor mode after 1s
+  //writeRegister8(FT6336_REG_AUTO_MONITOR_MODE, 0);                      // disable auto monitor mode
+  writeRegister8(FT6336_REG_TIME_ENTER_MONITOR, 1);                       // switch to monitor mode after 1s
   writeRegister8(FT6336_REG_INT_MODE, FT6336_INT_POLL_MODE);              // set to poll mode (1 interrupt per touch event)
   writeRegister8(FT6336_REG_POINTRATE_ACTIVE, FT6336_POINTRATE_ACTIVE);   // set active mode polling rate in ms
   writeRegister8(FT6336_REG_POINTRATE_MONITOR, FT6336_POINTRATE_MONITOR); // set monitor mode polling rate to in ms

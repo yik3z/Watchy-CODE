@@ -80,7 +80,8 @@ void Watchy::init(String datetime){
 
     if(wakeupBit & TS_INT_PIN_MASK){
       touchLocation = ts.getPoint(); 
-      #ifdef DEBUG
+
+      #ifdef DEBUG_TOUCHSCREEN
       Serial.print("Screen touched. x: ");
       Serial.print(touchLocation.x);
       Serial.print(" | y: ");
@@ -588,6 +589,11 @@ void Watchy::deepSleep(){ //TODO: set all pins to inputs to save power??
 
   display.hibernate();
   ts.setPowerMode(FT6336_PWR_MODE_MONITOR); // set touchscreen to monitor (low power) mode 
+  // #ifdef DEBUG_TOUCHSCREEN
+  // uint8_t pwrMode = ts.getPowerMode();
+  // Serial.print("Touchscreen Power Mode: ");
+  // Serial.println(pwrMode);
+  // #endif
   esp_sleep_enable_ext0_wakeup(RTC_PIN, 0); //enable deep sleep wake on RTC interrupt
   esp_sleep_enable_ext1_wakeup(BTN_PIN_MASK, ESP_EXT1_WAKEUP_ANY_HIGH); //enable deep sleep wake on button press
   adc_power_off();
