@@ -16,7 +16,7 @@
 //Power Modes of the display
 #define FT6336_PWR_MODE_ACTIVE        0x00  // Active Mode
 #define FT6336_PWR_MODE_MONITOR       0x01  // Monitor (Low Power) Mode
-#define FT6336_PWR_MODE_HIBERNATE     0x02  // Hibernate Mode. Display will not respond after this
+#define FT6336_PWR_MODE_HIBERNATE     0x03  // Hibernate Mode. Display will not respond after this
 
 
 
