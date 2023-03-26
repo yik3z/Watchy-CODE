@@ -96,29 +96,29 @@ void Watchy::init(String datetime){
 
     //critical battery / power saver mode
     if(lowBatt == 2 or powerSaver == 1){   
-        if(!hourlyTimeUpdate){
-            RTC.setAlarm(ALM2_MATCH_MINUTES, 0, 0, 0, 0);   //set RTC alarm to hourly (0th minute of the hour)
-            hourlyTimeUpdate = 1;
+      if(!hourlyTimeUpdate){
+          RTC.setAlarm(ALM2_MATCH_MINUTES, 0, 0, 0, 0);   //set RTC alarm to hourly (0th minute of the hour)
+          hourlyTimeUpdate = 1;
+      }
+      switch (wakeup_reason)
+      {
+      case ESP_SLEEP_WAKEUP_EXT0: //RTC Alarm
+        RTC.alarm(ALARM_2); //resets the alarm flag in the RTC
+        if(guiState == WATCHFACE_STATE){
+          RTC.read(currentTime);
+          showWatchFace(true); //partial updates on tick
         }
-        switch (wakeup_reason)
-        {
-        case ESP_SLEEP_WAKEUP_EXT0: //RTC Alarm
-            RTC.alarm(ALARM_2); //resets the alarm flag in the RTC
-            if(guiState == WATCHFACE_STATE){
-                RTC.read(currentTime);
-                showWatchFace(true); //partial updates on tick
-            }
-        case ESP_SLEEP_WAKEUP_EXT1: //button Press
-            handleButtonPress();
-            break;
-        default: //reset
-            #ifndef ESP_RTC
-            _rtcConfig(datetime);
-            #endif
-            //_bmaConfig();
-            showWatchFace(false); //full update on reset
-            break;
-            }
+      case ESP_SLEEP_WAKEUP_EXT1: //button Press
+        handleButtonPress();
+        break;
+      default: //reset
+        #ifndef ESP_RTC
+        _rtcConfig(datetime);
+        #endif
+        //_bmaConfig();
+        showWatchFace(false); //full update on reset
+        break;
+      }
     }
 
     //not critical batt
@@ -173,7 +173,7 @@ void Watchy::init(String datetime){
       default: //reset
           _rtcConfig(datetime);
           bootTime = RTC.get();
-          ts.begin();
+          ts.begin(200);
           //_bmaConfig(); //crashes watchy
           vibMotor(200, 4);
           showWatchFace(false); //full update on reset
@@ -589,11 +589,10 @@ void Watchy::deepSleep(){ //TODO: set all pins to inputs to save power??
 
   display.hibernate();
   ts.setPowerMode(FT6336_PWR_MODE_MONITOR); // set touchscreen to monitor (low power) mode 
-  // #ifdef DEBUG_TOUCHSCREEN
-  // uint8_t pwrMode = ts.getPowerMode();
-  // Serial.print("Touchscreen Power Mode: ");
-  // Serial.println(pwrMode);
-  // #endif
+  #ifdef DEBUG_TOUCHSCREEN
+  Serial.print("Touchscreen Power Mode: ");
+  Serial.println(ts.getPowerMode());
+  #endif
   esp_sleep_enable_ext0_wakeup(RTC_PIN, 0); //enable deep sleep wake on RTC interrupt
   esp_sleep_enable_ext1_wakeup(BTN_PIN_MASK, ESP_EXT1_WAKEUP_ANY_HIGH); //enable deep sleep wake on button press
   adc_power_off();
