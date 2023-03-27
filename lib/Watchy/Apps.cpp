@@ -21,7 +21,7 @@ extern RTC_DATA_ATTR int calendarLength;
 /*!
  * @brief Displays a GUI and buzzes the motor for a few seconds
  */
-void Watchy::showBuzz(uint8_t btnPin){
+void Watchy::showBuzz(uint64_t wakeupBit){
     #ifdef DEBUG
     Serial.println("App: Vib");
     #endif
@@ -40,7 +40,7 @@ void Watchy::showBuzz(uint8_t btnPin){
 /*!
  * @brief Displays a screen with all the clock-related apps
  */
-void Watchy::showClockMenu(uint8_t btnPin){
+void Watchy::showClockMenu(uint64_t wakeupBit){
     #ifdef DEBUG
     Serial.println("App: Vib");
     #endif
@@ -59,12 +59,12 @@ void Watchy::showClockMenu(uint8_t btnPin){
  * @brief Stopwatch function. Uses an interrupt (ISRStopwatchEnd()) to trigger the end time correctly.
  * Might be quite power hungry while timing becuase there's no way to sleep while counting millis
  */
-void Watchy::stopWatch(uint8_t btnPin){
+void Watchy::stopWatch(uint64_t wakeupBit){
     #ifdef DEBUG
     Serial.println("App: StpWtch");
     #endif
     guiState = APP_STATE;
-    if((btnPin == 0) || (btnPin == UP_BTN_PIN)){    //entering the app for the first time
+    if((wakeupBit == 0) || (wakeupBit & UP_BTN_MASK)){    //entering the app for the first time
         finalTimeElapsed = 0;
         display.setFullWindow();
         display.fillScreen(bgColour);
@@ -78,13 +78,13 @@ void Watchy::stopWatch(uint8_t btnPin){
         display.println("Start>");
         display.setCursor(5,20);
         display.println("<Exit");
-        if(btnPin == UP_BTN_PIN){
+        if(wakeupBit & UP_BTN_MASK){
             display.setCursor(70, 120);
             display.println("Reset!");
         }
         display.display(true, darkMode); //partial refresh
     }  
-    else if(btnPin == DOWN_BTN_PIN){
+    else if(wakeupBit & DOWN_BTN_MASK){
         //start stopwatch
         unsigned long startMillis = millis();
         unsigned long previousMillis = millis();
@@ -173,7 +173,7 @@ void Watchy::stopWatch(uint8_t btnPin){
  *
  * Uptime, Last NTP Sync, Power Saver Mode, Battery
  */
-void Watchy::showStats(uint8_t btnPin){
+void Watchy::showStats(uint64_t wakeupBit){
     #ifdef DEBUG
     Serial.println("App: Stats");
     #endif
@@ -248,7 +248,7 @@ void Watchy::showStats(uint8_t btnPin){
     guiState = APP_STATE;      
 }
 
-void Watchy::showCalendar(uint8_t btnPin){
+void Watchy::showCalendar(uint64_t wakeupBit){
     #ifdef DEBUG
     Serial.println("App: Calndr");
     #endif
@@ -267,9 +267,9 @@ void Watchy::showCalendar(uint8_t btnPin){
 	int x = 0;
 	int y = 20;
 	
-	if(btnPin == UP_BTN_PIN){
+	if(wakeupBit & UP_BTN_MASK){
 		calendarPage--;
-	}else if(btnPin == DOWN_BTN_PIN){
+	}else if(wakeupBit & DOWN_BTN_MASK){
 		calendarPage++;
 	}
 	else{   // no button was pressed -> app just entered, set calendar to page 1
@@ -343,7 +343,7 @@ void Watchy::showCalendar(uint8_t btnPin){
 	display.display(true, darkMode); //partial refresh (true)
 }
 
-void Watchy::connectWiFiGUI(uint8_t btnPin){
+void Watchy::connectWiFiGUI(uint64_t wakeupBit){
     #ifdef DEBUG
     Serial.println("App: WiFi");
     #endif
@@ -401,7 +401,7 @@ void Watchy::connectWiFiGUI(uint8_t btnPin){
 	btStop();
 }   //connectWiFiGUI
 
-void Watchy::wifiOta(uint8_t btnPin){
+void Watchy::wifiOta(uint64_t wakeupBit){
 	//TODO: add in functionality to retry wifi connection
 	guiState = APP_STATE;  
     #ifdef DEBUG
@@ -504,7 +504,7 @@ void Watchy::wifiOta(uint8_t btnPin){
 	display.display(true, darkMode); //partial refresh
 } //wifiOta
 
-void Watchy::setPowerSaver(uint8_t btnPin){ //does not do anything at the moment
+void Watchy::setPowerSaver(uint64_t wakeupBit){ //does not do anything at the moment
     #ifdef DEBUG
     Serial.println("App: PwrSaver");
     #endif
@@ -516,32 +516,28 @@ void Watchy::setPowerSaver(uint8_t btnPin){ //does not do anything at the moment
 	display.setCursor(35, 50);
 	display.println("Power Saver");
 	display.setCursor(85, 100);
-	if(btnPin == DOWN_BTN_PIN){    //toggle power saver if button has been pressed
+	if(wakeupBit & DOWN_BTN_MASK){    //toggle power saver if button has been pressed
 		powerSaver = !powerSaver;
 		#ifdef DEBUG_POWERSAVER
 		Serial.print("Power Saver: ");
 		Serial.println(powerSaver);  
 		#endif  //DEBUG_POWERSAVER
 	}
-	#ifdef DEBUG
-	Serial.print("Button Pressed: ");
-	Serial.println(btnPin);  
-	#endif  //DEBUG
 	display.println(powerSaver ? "On" : "Off");
-	display.setCursor(45, 125);
-	display.println("Not in use!");
+	// display.setCursor(45, 125);
+	// display.println("Not in use!");
 	display.display(true, darkMode);  //partial update
 	display.setCursor(115, 195);
 	display.println("Toggle>");
 	guiState = APP_STATE;    
 }
 
-void Watchy::setDarkMode(uint8_t btnPin){
+void Watchy::setDarkMode(uint64_t wakeupBit){
     #ifdef DEBUG
     Serial.println("App: DarkMode");
     #endif
 	guiState = APP_STATE;
-	if(btnPin == DOWN_BTN_PIN){    //toggle darkmode if button has been pressed
+	if(wakeupBit & DOWN_BTN_MASK){    //toggle darkmode if button has been pressed
 		darkMode = !darkMode;
 		fgColour = darkMode ? GxEPD_WHITE : GxEPD_BLACK; 
 		bgColour = darkMode ? GxEPD_BLACK : GxEPD_WHITE; 
@@ -549,9 +545,6 @@ void Watchy::setDarkMode(uint8_t btnPin){
 		Serial.println(darkMode);   //debug
 		#endif
 	}
-	#ifdef DEBUG
-	Serial.println(btnPin);   //debug
-	#endif
 	display.setFullWindow();
 	display.fillScreen(bgColour);
 	display.setFont(&FreeMonoBold9pt7b);
@@ -563,7 +556,7 @@ void Watchy::setDarkMode(uint8_t btnPin){
 	display.setCursor(115, 195);
 	display.println("Toggle>");
 
-	if(btnPin == DOWN_BTN_PIN){
+	if(wakeupBit & DOWN_BTN_MASK){
 			display.display(false, darkMode); //full update since darkmode changes the entire display
 	} else{
 			display.display(true, darkMode); //partial update
@@ -571,7 +564,7 @@ void Watchy::setDarkMode(uint8_t btnPin){
 }
 
 //  GUI to allow the user to manually set the date and time
-void Watchy::setTime(uint8_t btnPin){
+void Watchy::setTime(uint64_t wakeupBit){
     #ifdef DEBUG
     Serial.println("App: SetTime");
     #endif
@@ -732,7 +725,7 @@ void Watchy::setTime(uint8_t btnPin){
 #ifdef USING_ACCELEROMETER
 //GUI to show temperature
 //temperature taken from BMA423 Accelerometer lol
-void Watchy::showTemperature(uint8_t btnPin){
+void Watchy::showTemperature(uint64_t wakeupBit){
     guiState = APP_STATE;
     display.setFullWindow();
     display.fillScreen(bgColour);
@@ -753,7 +746,7 @@ void Watchy::showTemperature(uint8_t btnPin){
 
 
 #ifdef USING_ACCELEROMETER
-void Watchy::showAccelerometer(uint8_t btnPin){
+void Watchy::showAccelerometer(uint64_t wakeupBit){
     guiState = APP_STATE;
     display.setFullWindow();
     display.fillScreen(bgColour);
