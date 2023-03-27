@@ -216,7 +216,7 @@ void Watchy::handleInput(){
   }
   else if (guiState == APP_STATE)
   {
-    // let the app handle it
+    appInteractionHandler();
   }
 }   //handleInput
 
