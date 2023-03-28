@@ -181,10 +181,6 @@ void Watchy::showMainMenu(bool initial, bool partialRefresh){
   if(initial) menuPageNumber = 1;
   display.setFullWindow();
   display.fillScreen(bgColour);
-  display.setFont(&FreeMonoBold9pt7b);
-  display.setTextColor(fgColour);
-
-  // draw all the boxes
   _drawMenuOptions(mainMenuItems, mainMenuOptions);  // TODO: test
   _drawPageNumber();
 
@@ -227,8 +223,6 @@ void Watchy::showClockMenu(bool initial, bool partialRefresh){
   #endif
   display.setFullWindow();
   display.fillScreen(bgColour);
-  display.setFont(&FreeMonoBold9pt7b);
-  display.setTextColor(fgColour);
   _drawMenuOptions(clockMenuItems, clockMenuOptions); // TODO: test
   _drawPageNumber();
   display.display(true, darkMode);
@@ -286,6 +280,8 @@ void Watchy::_drawPageNumber(){
 void Watchy::_drawMenuOptions(const char *menuItems[], uint32_t menuOptions){
   int16_t xPos;
   int16_t yPos;
+  display.setFont(&FreeMonoBold9pt7b);
+  display.setTextColor(fgColour);
   for(int row=0; row<numColumnsRows; row++){
     for(int column=0; column<numColumnsRows; column++){
       uint32_t menuPosition = row*numColumnsRows+column+(menuPageNumber-1)*4;
@@ -299,4 +295,10 @@ void Watchy::_drawMenuOptions(const char *menuItems[], uint32_t menuOptions){
       display.println(menuItems[(menuPosition)]);
     }
   }   
+}
+
+void Watchy::_drawCloseButton(){
+  display.drawRect(5, 21, 18, 18, fgColour);
+  display.setCursor(9,16);
+  display.println("x");
 }

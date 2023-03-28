@@ -97,6 +97,7 @@ class Watchy {
         void _appLauncherHandler(appID_t launchAppID = none_appState);
         void _drawPageNumber();
         void _drawMenuOptions(const char *menuItems[], uint32_t menuOptions);
+        void _drawCloseButton();
         bool _tpWithinBounds(int16_t minX, int16_t maxX, int16_t minY, int16_t maxY);
         bool _tpWithinSelectedMenuBox(uint8_t boxNumber);
         int32_t _tpWithinMenuBox();

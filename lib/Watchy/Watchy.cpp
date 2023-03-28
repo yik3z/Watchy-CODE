@@ -202,8 +202,8 @@ void Watchy::handleInput(){
   }
   #endif //DEBUG
 
-  // Global button overrides
-  // back button always goes to watch face
+  // Global overrides
+  // back/close button always goes to watch face
   if (wakeupBit & BACK_BTN_MASK){ 
     if (runningApp != watchFaceState){
       wakeupBit = 0;
@@ -212,6 +212,17 @@ void Watchy::handleInput(){
       RTC.read(currentTime);
       showWatchFace(false);
       return;
+    }
+  } else if (wakeupBit & TS_INT_PIN_MASK){
+    if (runningApp != watchFaceState){
+      if(_tpWithinBounds(0,30,0,30)){
+        wakeupBit = 0;
+        menuPageNumber = 0;   // reset menu page number when returning to watch face
+        RTC.alarm(ALARM_2);   // reset the alarm flag in the RTC
+        RTC.read(currentTime);
+        showWatchFace(false);
+        return;
+      }
     }
   }
   
@@ -230,9 +241,8 @@ void Watchy::_watchfaceInteractionHandler(){
   if (wakeupBit & MENU_BTN_MASK){
     wakeupBit = 0;
     showMainMenu();
-  } else if (wakeupBit & BACK_BTN_MASK){
+  } else if (wakeupBit & BACK_BTN_MASK){ // update watch face
     wakeupBit = 0;
-    // update watch face
     RTC.read(currentTime);
     showWatchFace(true);
   } else if(wakeupBit & TS_INT_PIN_MASK){
@@ -243,6 +253,9 @@ void Watchy::_watchfaceInteractionHandler(){
       showCalendar();
     }else if(_tpWithinBounds(0,200,0,30)){
       showStats();
+    }else{ // update watch face
+      RTC.read(currentTime);
+      showWatchFace(true);
     }
   }
 } // watchfaceInteractionHandler

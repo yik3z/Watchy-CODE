@@ -30,6 +30,8 @@ void Watchy::showBuzz(){
     #endif
     //guiState = APP_STATE;
     runningApp = vibMotorState;
+    // handle inputs
+    wakeupBit = 0;
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
@@ -50,7 +52,26 @@ void Watchy::stopWatch(){
     #endif
     //guiState = APP_STATE;
     runningApp = stopWatchState;
-    if((wakeupBit == 0) || (wakeupBit & UP_BTN_MASK)){    //entering the app for the first time
+    enum stopwatchCommand {
+        none,
+        resetTimer,
+        startTimer,
+        stopTimer
+    } input;
+
+    if(wakeupBit == 0) input = none;
+    else if (wakeupBit & UP_BTN_MASK) input = resetTimer;
+    else if (wakeupBit & DOWN_BTN_MASK) input = startTimer;
+    else if (wakeupBit & TS_INT_PIN_MASK){
+        if (_tpWithinBounds(63,128,103,126)){
+            input = startTimer;
+        } else if (_tpWithinBounds(63,128,133,156)){
+            input = resetTimer;
+        }
+    }
+    wakeupBit = 0;
+
+    if((input == none) || (input == resetTimer)){    //entering the app for the first time
         finalTimeElapsed = 0;
         display.setFullWindow();
         display.fillScreen(bgColour);
@@ -62,20 +83,27 @@ void Watchy::stopWatch(){
         display.print("00:00.000");
         display.setCursor(130, 195);
         display.println("Start>");
-        display.setCursor(5,20);
-        display.println("<Exit");
-        if(wakeupBit & UP_BTN_MASK){
-            display.setCursor(70, 120);
-            display.println("Reset!");
-        }
+
+        display.drawRect(63, 103, 65, 23, fgColour);
+        display.setCursor(70, 120);
+        display.println("Start");
+        if(input == resetTimer){    //show black reset button
+            display.fillRect(63, 132, 65, 23, fgColour);
+            display.setTextColor(bgColour);
+        } else{
+            display.drawRect(63, 133, 65, 23, fgColour);
+            display.setTextColor(fgColour);
+        }            
+        display.setCursor(70, 150);
+        display.println("Reset");
         display.display(true, darkMode); //partial refresh
     }  
-    else if(wakeupBit & DOWN_BTN_MASK){
+    else if(input == startTimer){
         //start stopwatch
         unsigned long startMillis = millis();
         unsigned long previousMillis = millis();
         attachInterrupt(DOWN_BTN_PIN, ISRStopwatchEnd, RISING); //use interrupt to stop stopwatch
-
+        attachInterrupt(TS_INTERRUPT_PIN, ISRStopwatchEnd, RISING);
         display.setFullWindow();
         display.fillScreen(bgColour);
         display.setFont(&FreeMonoBold9pt7b);
@@ -97,6 +125,7 @@ void Watchy::stopWatch(){
             //"stop" ISR has been triggered   
             if (stopBtnPressed == true){
                 detachInterrupt(DOWN_BTN_PIN);
+                detachInterrupt(TS_INTERRUPT_PIN);
                 stopBtnPressed = false;
                 break;
             }
