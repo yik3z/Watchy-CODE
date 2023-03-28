@@ -6,6 +6,7 @@ FT6336 Watchy::ts(FT6336(TS_INTERRUPT_PIN, TS_RESET_PIN));
 
 RTC_DATA_ATTR int guiState;
 RTC_DATA_ATTR int menuIndex;
+
 #ifdef USING_ACCELEROMETER
 RTC_DATA_ATTR BMA423 sensor;
 #endif //USING_ACCELEROMETER
@@ -25,21 +26,22 @@ TS_Point touchLocation;
 RTC_DATA_ATTR time_t lastNtpSync = 0;
 RTC_DATA_ATTR bool lastNtpSyncSuccess = false;
 RTC_DATA_ATTR time_t bootTime = 0;
+
 //calendar
 //extern const int calEntryCount;        
 extern RTC_DATA_ATTR int calendarLength;
 extern RTC_DATA_ATTR bool lastCalendarSyncSuccess;
 extern RTC_DATA_ATTR calendarEntries calEnt[CALENDAR_ENTRY_COUNT];
+
+// menu
+extern RTC_DATA_ATTR uint32_t menuPageNumber;  // page number used by all the menus
+
 //stopwatch
 //for stopwatch (used by ISRs)
 extern bool stopBtnPressed;
 extern unsigned long stopWatchEndMillis;
 
 volatile unsigned long lastButtonInterrupt;  //si the last button time pressed
-
-
-const char *menuItems[] = {"Show Stats", "Vibrate Motor", "Show Calendar", "Set Time","Dark/Light Mode","Power Saver","Show Temperature","Stopwatch","Sync to WiFi","WiFi OTA"};
-int16_t menuOptions = sizeof(menuItems) / sizeof(menuItems[0]);
 
 String getValue(String data, char separator, int index)
 {
@@ -112,11 +114,7 @@ void Watchy::init(String datetime){
         handleButtonPress();
         break;
       default: //reset
-        #ifndef ESP_RTC
-        _rtcConfig(datetime);
-        #endif
-        //_bmaConfig();
-        showWatchFace(false); //full update on reset
+        _initReset();
         break;
       }
     }
@@ -170,17 +168,13 @@ void Watchy::init(String datetime){
           }
           break;
       default: //reset
-          _rtcConfig(datetime);
-          bootTime = RTC.get();
-          ts.begin(200);
-          //_bmaConfig(); //crashes watchy
-          vibMotor(200, 4);
-          showWatchFace(false); //full update on reset
-          break;
+        _initReset();
+        vibMotor(200, 4);
+        break;
     }
 
     }
-    deepSleep();
+    _deepSleep();
 }
 
 /***************  BUTTON HANDLER ***************/
@@ -189,15 +183,28 @@ void Watchy::init(String datetime){
  * Updated handler for button and touchscreen events
 */
 void Watchy::handleInput(){
+
   #ifdef DEBUG
-  //Serial.println("Enter Loop (buttonpress)");
+  // print input for debug
+  if (wakeupBit & MENU_BTN_MASK){
+    Serial.println("MENU PRESSED");
+  } else if (wakeupBit & BACK_BTN_MASK){
+    Serial.println("BACK PRESSED");
+  }else if (wakeupBit & UP_BTN_MASK){
+    Serial.println("UP PRESSED");
+  }else if (wakeupBit & DOWN_BTN_MASK){
+    Serial.println("DOWN PRESSED");
+  }else if (wakeupBit & TS_INT_PIN_MASK){
+    Serial.println("TOUCH DETECTED");
+  }
   #endif //DEBUG
 
   // Global button overrides
   // back button always goes to watch face
   if (wakeupBit & BACK_BTN_MASK){ 
-    if (guiState != WATCHFACE_STATE){
-      RTC.alarm(ALARM_2); //resets the alarm flag in the RTC
+    if (runningApp != watchFaceState){
+      menuPageNumber = 0;   // reset menu page number when returning to watch face
+      RTC.alarm(ALARM_2);   // reset the alarm flag in the RTC
       RTC.read(currentTime);
       showWatchFace(false);
       return;
@@ -205,26 +212,23 @@ void Watchy::handleInput(){
   }
   
   // GUI state-based event handling
-  if (guiState == WATCHFACE_STATE)
-  {
+  if (runningApp == watchFaceState){
     watchfaceInteractionHandler();
+  }  else if (runningApp == mainMenuState){
+    _menuInteractionHandler(&showMainMenu, mainMenuPages);
+  }  else if (runningApp == clockMenuState){
+    _menuInteractionHandler(&showClockMenu, clockMenuPages);
+  }  else if (guiState > mainMenuState){
+    _appInteractionHandler();
   }
-  else if (guiState == MAIN_MENU_STATE)
-  {
-    // enter menu, scroll or exit to watchface
-  }
-  else if (guiState == APP_STATE)
-  {
-    appInteractionHandler();
-  }
-}   //handleInput
+} // handleInput
 
 // Handles button and touch events on the watchface
 void Watchy::watchfaceInteractionHandler(){
   if (wakeupBit & MENU_BTN_MASK){
-    showMenu(menuIndex, true);
+    showMainMenu(true);
   } else if (wakeupBit & BACK_BTN_MASK){  
-    // update watch face (for middle fo the night when the watch updates only hourly)
+    // update watch face
     RTC.read(currentTime);
     showWatchFace(true);
   } else if(wakeupBit & TS_INT_PIN_MASK){
@@ -236,48 +240,56 @@ void Watchy::watchfaceInteractionHandler(){
       showStats();
     }
   }
-}
+  wakeupBit = 0;  //clear wakeupBit (TODO: do we even need to?)
+} // watchfaceInteractionHandler
 
-// Dispatches the interaction event to the correct app
-void Watchy::appInteractionHandler(){
-  switch(menuIndex)
+/*!
+ * @brief Dispatches the interaction event to the correct app (based on runningApp). App apps here to be 
+
+ *
+ * @param wakeupBit (optional) interaction event to be passed on to the app
+ *
+ */
+void Watchy::_appInteractionHandler(){
+    switch(runningApp)
   {
-    case 0:
+    case 3:
       showStats(wakeupBit);
       break;
-    case 1:
+    case 4:
       showBuzz(wakeupBit);
       break;          
-    case 2:
+    case 5:
       showCalendar(wakeupBit);
       break;
-    case 3:
+    case 7:
       setTime(wakeupBit);
       break;
-    case 4:
+    case 8:
       setDarkMode(wakeupBit);
       break;   
-    case 5:
+    case 9:
       setPowerSaver(wakeupBit);      
       break;           
-    case 6:
+    case 10:
       #ifdef USING_ACCELEROMETER
       //showTemperature(wakeupBit);
       #endif //USING_ACCELEROMETER
       break;
-    case 7:
+    case 11:
       stopWatch(wakeupBit);
       break;
-    case 8:
+    case 12:
       connectWiFiGUI(wakeupBit);
       break;
-    case 9:
+    case 13:
       wifiOta(wakeupBit);
       break;
     default:
       break;                              
   }
-}
+} // appInteractionHandler
+
 
 // checks whether the existing touch point is within the bounds
 bool Watchy::_tpWithinBounds(uint8_t minX, uint8_t maxX, uint8_t minY, uint8_t maxY){
@@ -293,283 +305,52 @@ bool Watchy::_tpWithinBounds(uint8_t minX, uint8_t maxX, uint8_t minY, uint8_t m
   return true;
 }
 
-/* add the buttons for your apps here. 
-TODO: Change to filter by app state first
-*/
-void Watchy::handleButtonPress(){
-    #ifdef DEBUG
-    //Serial.println("Enter Loop (buttonpress)");
-    #endif //DEBUG
-  
-  //Menu Button
-  if (wakeupBit & MENU_BTN_MASK){
-      #ifdef DEBUG
-      Serial.println("MENU PRESSED");
-      #endif
-      wakeupBit = 0;    //clear buttonpress flag
-    if(guiState == WATCHFACE_STATE){//enter menu state if coming from watch face
-        showMenu(menuIndex, true);
-        //fastMenu();
-    }else if(guiState == MAIN_MENU_STATE){//if already in menu, then select menu item
-      switch(menuIndex)
-      {
-        case 0:
-          showStats();
-          break;
-        case 1:
-          showBuzz();
-          break;          
-        case 2:
-          showCalendar();
-          break;
-        case 3:
-          setTime();
-          break;
-        case 4:
-          setDarkMode();
-          break;   
-        case 5:
-          setPowerSaver();      
-          break;           
-        case 6:
-          #ifdef USING_ACCELEROMETER
-          //showTemperature();
-          #endif //USING_ACCELEROMETER
-          break;
-        case 7:
-          stopWatch();
-          break;
-        case 8:
-          connectWiFiGUI();
-          break;
-        case 9:
-          wifiOta();
-          break;
-        default:
-          break;                              
-      }
-    }
-    else if(guiState == APP_STATE){//if it's in the app, tell the app that the button was pressed
-      #ifdef DEBUG
-      Serial.println(menuIndex);
-      #endif
+// // scrolling menu by Alex Story
+// void Watchy::showMenu(byte menuIndex, bool partialRefresh){
+//   #ifdef DEBUG
+//   Serial.println("GUI: Menu");
+//   #endif
+//   guiState = MAIN_MENU_STATE;  
+//   runningApp = mainMenuState;
+//   display.setFullWindow();
+//   display.fillScreen(bgColour);
+//   display.setFont(&FreeMonoBold9pt7b);
 
-      switch(menuIndex)
-      {
-        case 0:
-          showStats(MENU_BTN_PIN);
-          break;
-        case 1:
-          //showBuzz();
-          break;          
-        case 2:
-          //showCalendar();    
-          break;
-        case 3:
-          //setTime();
-          break;
-        case 4:
-          setDarkMode(MENU_BTN_PIN);
-          break;   
-        case 5:
-          setPowerSaver(MENU_BTN_PIN); 
-          break;                
-        case 6:
-          //showTemperature();      /disabled
-          break;
-        case 7:
-          stopWatch(MENU_BTN_PIN);
-          break;
-        case 8:
-          //connectWiFiGUI();
-          break;
-        case 9:
-          //wifiOta();
-          break;
-        default:
-          break;                              
-      }
-      
-    }
-  }
+//   int16_t  x1, y1;
+//   uint16_t w, h;
+//   int16_t yPos;
+//   int16_t startPos=0;
 
-  //Back Button
-  else if (wakeupBit & BACK_BTN_MASK){
-    #ifdef DEBUG
-    Serial.println("BACK PRESSED");
-    #endif
-    wakeupBit = 0;
-    if(guiState == MAIN_MENU_STATE){//exit to watch face if already in menu
-      RTC.alarm(ALARM_2); //resets the alarm flag in the RTC
-      RTC.read(currentTime);
-      showWatchFace(false);
-    }else if(guiState == APP_STATE){
-      showMenu(menuIndex, true);//exit to menu if already in app
-      //fastMenu();   //test
-    }else if(guiState == WATCHFACE_STATE){
-      RTC.read(currentTime);
-      showWatchFace(true);     //update watch face (for middle fo the night when the watch updates only hourly)
-    }  
-  }
-  
-  //Up Button
-  else if (wakeupBit & UP_BTN_MASK){
-    #ifdef DEBUG
-    Serial.println("UP PRESSED");
-    #endif
-    wakeupBit = 0;
-    if(guiState == MAIN_MENU_STATE){//increment menu index
-      menuIndex--;
-      if(menuIndex < 0){
-        menuIndex = menuOptions - 1;
-      }    
-      showMenu(menuIndex, true);
-      //fastMenu();   //test
-    }
-    else if (guiState == APP_STATE){
-        //ADD YOUR BUTTON EVENTS HERE
-        switch(menuIndex)
-        {
-        case 0: //battery App
-          //showStats();
-          break;
-        case 1:
-          //showBuzz();
-          break;          
-        case 2:
-          showCalendar(UP_BTN_PIN);
-          break;
-        case 3:
-          //setTime();
-          break;
-        case 4:
-          //setDarkMode(UP_BTN_PIN);
-          break;    
-        case 5:
-          //setPowerSaver(UP_BTN_PIN);  
-          break;              
-        case 6:
-          //showTemperature();
-          break;
-	    case 7:
-		  stopWatch(UP_BTN_PIN);
-		  break;
-        case 8:
-		  //connectWiFiGUI();
-		  break;
-        case 9:
-          //wifiOta();
-          break;
-        default:
-          break;
-        }
-    }
-  }
-  //Down Button
-  else if (wakeupBit & DOWN_BTN_MASK){
-    #ifdef DEBUG
-    Serial.println("DOWN PRESSED");
-    #endif
-    wakeupBit = 0;
-    if(guiState == MAIN_MENU_STATE){//decrement menu index
-      menuIndex++;
-      if(menuIndex > menuOptions - 1){
-        menuIndex = 0;
-      }
-      showMenu(menuIndex, true);
-      //fastMenu();
-    }
-    
-    else if (guiState == APP_STATE){ //is in an app
-    //ADD YOUR BUTTON EVENTS HERE
-        switch(menuIndex)
-        {
-        case 0: //battery App
-          //showStats();
-          break;
-        case 1:
-          //showBuzz();
-          break;          
-        case 2:
-          showCalendar(DOWN_BTN_PIN);
-          break;
-        case 3:
-          //setTime();
-          break;
-        case 4:
-          setDarkMode(DOWN_BTN_PIN);
-          break;    
-        case 5:
-          setPowerSaver(DOWN_BTN_PIN);  
-          break;              
-        case 6:
-          //showTemperature();
-          break;
-	    case 7:
-		  stopWatch(DOWN_BTN_PIN);
-		  break;
-        case 8:
-		  //connectWiFiGUI();
-		  break;
-        case 9:
-          //wifiOta();
-          break;
-        default:
-          break;
-        }
-    }
-  }
-  // TODO: add touch
-  else if (wakeupBit & TS_INT_PIN_MASK){
-    wakeupBit = 0;
-  }
-}   //handleButtonPress
-
-//scrolling menu by Alex Story
-void Watchy::showMenu(byte menuIndex, bool partialRefresh){
-  #ifdef DEBUG
-  Serial.println("GUI: Menu");
-  #endif
-  guiState = MAIN_MENU_STATE;  
-  display.setFullWindow();
-  display.fillScreen(bgColour);
-  display.setFont(&FreeMonoBold9pt7b);
-
-  int16_t  x1, y1;
-  uint16_t w, h;
-  int16_t yPos;
-  int16_t startPos=0;
-
-  //Code to move the menu if current selected index out of bounds
-  if(menuIndex+MENU_LENGTH>menuOptions){
-    startPos=(menuOptions-1)-(MENU_LENGTH-1);
-  }
-  else{
-    startPos=menuIndex;
-  }
-  for(int i=startPos; i<MENU_LENGTH+startPos; i++){
-    yPos = 30+(MENU_HEIGHT*(i-startPos));
-    display.setCursor(0, yPos);
-    if(i == menuIndex){
-      display.getTextBounds(menuItems[i], 0, yPos, &x1, &y1, &w, &h);
-      display.fillRect(x1-1, y1-10, 200, h+15, fgColour);
-      display.setTextColor(bgColour);
-      display.println(menuItems[i]);      
-    }else{
-      display.setTextColor(fgColour);
-      display.println(menuItems[i]);
-    }   
-  }
-  #ifdef DEBUG_TIMING
-  Serial.print("Start drawing menu: ");
-  Serial.println(millis());
-  #endif //DEBUG_TIMING
-  display.display(partialRefresh, darkMode);
-  #ifdef DEBUG_TIMING
-  Serial.print("End drawing menu: ");
-  Serial.println(millis());
-  #endif //DEBUG_TIMING  
-}   //showMenu
+//   //Code to move the menu if current selected index out of bounds
+//   if(menuIndex+MENU_LENGTH>menuOptions){
+//     startPos=(menuOptions-1)-(MENU_LENGTH-1);
+//   }
+//   else{
+//     startPos=menuIndex;
+//   }
+//   for(int i=startPos; i<MENU_LENGTH+startPos; i++){
+//     yPos = 30+(MENU_HEIGHT*(i-startPos));
+//     display.setCursor(0, yPos);
+//     if(i == menuIndex){
+//       display.getTextBounds(menuItems[i], 0, yPos, &x1, &y1, &w, &h);
+//       display.fillRect(x1-1, y1-10, 200, h+15, fgColour);
+//       display.setTextColor(bgColour);
+//       display.println(menuItems[i]);      
+//     }else{
+//       display.setTextColor(fgColour);
+//       display.println(menuItems[i]);
+//     }   
+//   }
+//   #ifdef DEBUG_TIMING
+//   Serial.print("Start drawing menu: ");
+//   Serial.println(millis());
+//   #endif //DEBUG_TIMING
+//   display.display(partialRefresh, darkMode);
+//   #ifdef DEBUG_TIMING
+//   Serial.print("End drawing menu: ");
+//   Serial.println(millis());
+//   #endif //DEBUG_TIMING  
+// }   //showMenu
 
 //HELPER FUNCTIONS
 
@@ -581,7 +362,7 @@ void Watchy::showMenu(byte menuIndex, bool partialRefresh){
  * - sets display to hibernate
  *
  */
-void Watchy::deepSleep(){ //TODO: set all pins to inputs to save power??
+void Watchy::_deepSleep(){ //TODO: set all pins to inputs to save power??
   #ifdef DEBUG_TIMING
   Serial.println("Hibernate Display: " + String(millis()));
   #endif //DEBUG_TIMING
@@ -693,6 +474,8 @@ void Watchy::vibMotor(uint8_t intervalMs, uint8_t length){
 }
 
 void Watchy::showWatchFace(bool partialRefresh){
+    guiState = WATCHFACE_STATE;
+    runningApp = watchFaceState;
     display.setFullWindow();
     drawWatchFace();
     #ifdef DEBUG_TIMING
@@ -704,7 +487,6 @@ void Watchy::showWatchFace(bool partialRefresh){
     Serial.print("End drawing watch face: ");
     Serial.println(millis());
     #endif //DEBUG_TIMING
-    guiState = WATCHFACE_STATE;
 }
 
 
@@ -839,6 +621,15 @@ void Watchy::_printCpuSettings(){
 void IRAM_ATTR ISRStopwatchEnd() {
     stopWatchEndMillis = millis();
     stopBtnPressed = true;
+}
+
+// Init routine to be run after a reset
+void Watchy::_initReset(){
+  //_rtcConfig(datetime);
+  bootTime = RTC.get();
+  ts.begin(200);
+  //_bmaConfig(); //crashes watchy. B<A starts up in suspend mode so no need to do anything
+  showWatchFace(false); //full update on reset
 }
 
 //TODO: work in progress, crashes watchy

@@ -3,6 +3,8 @@
 #include "Watchy.h"
 #include "Apps.h"
 
+RTC_DATA_ATTR appState_t runningApp = watchFaceState;
+
 //for stopwatch
 unsigned long stopWatchEndMillis = 0;
 RTC_DATA_ATTR unsigned long finalTimeElapsed = 0;
@@ -26,6 +28,7 @@ void Watchy::showBuzz(uint64_t wakeupBit){
     Serial.println("App: Vib");
     #endif
     guiState = APP_STATE;
+    runningApp = vibMotorState;
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
@@ -34,25 +37,7 @@ void Watchy::showBuzz(uint64_t wakeupBit){
     display.println("Buzz!");
     display.display(false, darkMode); //full refresh
     vibMotor();
-    showMenu(menuIndex, false);    
-}
-
-/*!
- * @brief Displays a screen with all the clock-related apps
- */
-void Watchy::showClockMenu(uint64_t wakeupBit){
-    #ifdef DEBUG
-    Serial.println("App: Vib");
-    #endif
-    guiState = APP_STATE;
-    // display.setFullWindow();
-    // display.fillScreen(bgColour);
-    // display.setFont(&FreeMonoBold9pt7b);
-    // display.setTextColor(fgColour);
-    // display.setCursor(70, 80);
-    // display.println("Buzz!");
-    // show boxes with clock
-    display.display(true, darkMode); //full refresh 
+    showMainMenu(false);    
 }
 
 /*! 
@@ -64,6 +49,7 @@ void Watchy::stopWatch(uint64_t wakeupBit){
     Serial.println("App: StpWtch");
     #endif
     guiState = APP_STATE;
+    runningApp = stopWatchState;
     if((wakeupBit == 0) || (wakeupBit & UP_BTN_MASK)){    //entering the app for the first time
         finalTimeElapsed = 0;
         display.setFullWindow();
@@ -178,6 +164,7 @@ void Watchy::showStats(uint64_t wakeupBit){
     Serial.println("App: Stats");
     #endif
     guiState = APP_STATE;
+    runningApp = showStatsState;
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
@@ -244,8 +231,7 @@ void Watchy::showStats(uint64_t wakeupBit){
     display.setCursor(140, 185);
     display.print(percentage);
     display.println("%");
-    display.display(true, darkMode); //partial refresh (true)
-    guiState = APP_STATE;      
+    display.display(true, darkMode); //partial refresh (true)  
 }
 
 void Watchy::showCalendar(uint64_t wakeupBit){
@@ -253,6 +239,7 @@ void Watchy::showCalendar(uint64_t wakeupBit){
     Serial.println("App: Calndr");
     #endif
 	guiState = APP_STATE;
+    runningApp = calendarState;
 	display.setFullWindow();
 	display.fillScreen(bgColour);
 	display.setFont(&FreeMonoBold9pt7b);
@@ -344,11 +331,12 @@ void Watchy::showCalendar(uint64_t wakeupBit){
 }
 
 void Watchy::connectWiFiGUI(uint64_t wakeupBit){
+	//TODO: add in functionality to retry wifi
     #ifdef DEBUG
     Serial.println("App: WiFi");
     #endif
-	//TODO: add in functionality to retry wifi
-	guiState = APP_STATE;  
+	guiState = APP_STATE; 
+    runningApp = connectWiFiState;
 	display.setFullWindow();
 	display.fillScreen(bgColour);
 	display.setFont(&FreeMonoBold9pt7b);
@@ -403,10 +391,11 @@ void Watchy::connectWiFiGUI(uint64_t wakeupBit){
 
 void Watchy::wifiOta(uint64_t wakeupBit){
 	//TODO: add in functionality to retry wifi connection
-	guiState = APP_STATE;  
     #ifdef DEBUG
     Serial.println("App: OTA");
     #endif
+	guiState = APP_STATE;  
+    runningApp = wifiOtaState;
 	display.setFullWindow();
 	display.fillScreen(bgColour);
 	display.setFont(&FreeMonoBold9pt7b);
@@ -509,6 +498,7 @@ void Watchy::setPowerSaver(uint64_t wakeupBit){ //does not do anything at the mo
     Serial.println("App: PwrSaver");
     #endif
 	guiState = APP_STATE;
+    runningApp = setPowerSaverState;
 	display.setFullWindow();
 	display.fillScreen(bgColour);
 	display.setFont(&FreeMonoBold9pt7b);
@@ -529,7 +519,6 @@ void Watchy::setPowerSaver(uint64_t wakeupBit){ //does not do anything at the mo
 	display.display(true, darkMode);  //partial update
 	display.setCursor(115, 195);
 	display.println("Toggle>");
-	guiState = APP_STATE;    
 }
 
 void Watchy::setDarkMode(uint64_t wakeupBit){
@@ -537,6 +526,7 @@ void Watchy::setDarkMode(uint64_t wakeupBit){
     Serial.println("App: DarkMode");
     #endif
 	guiState = APP_STATE;
+    runningApp = setDarkModeState;
 	if(wakeupBit & DOWN_BTN_MASK){    //toggle darkmode if button has been pressed
 		darkMode = !darkMode;
 		fgColour = darkMode ? GxEPD_WHITE : GxEPD_BLACK; 
@@ -569,6 +559,7 @@ void Watchy::setTime(uint64_t wakeupBit){
     Serial.println("App: SetTime");
     #endif
     guiState = APP_STATE;
+    runningApp = setTimeState;
     RTC.read(currentTime);
     int8_t minute = currentTime.Minute;
     int8_t hour = currentTime.Hour;
@@ -719,7 +710,7 @@ void Watchy::setTime(uint64_t wakeupBit){
     time_t t = makeTime(tm) + FUDGE;
     RTC.set(t);
 
-    showMenu(menuIndex, false);
+    showMainMenu(false);
 }   //setTime
 
 #ifdef USING_ACCELEROMETER
@@ -727,6 +718,7 @@ void Watchy::setTime(uint64_t wakeupBit){
 //temperature taken from BMA423 Accelerometer lol
 void Watchy::showTemperature(uint64_t wakeupBit){
     guiState = APP_STATE;
+    runningApp = showTempState;
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
@@ -738,9 +730,7 @@ void Watchy::showTemperature(uint64_t wakeupBit){
     display.setCursor(70, 80);
     display.print(temperature);
     display.println(" C");
-    display.display(true, darkMode); //partialrefresh = true
-
-    guiState = APP_STATE;      
+    display.display(true, darkMode); //partialrefresh = true   
 }
 #endif //USING_ACCELEROMETER
 
@@ -748,6 +738,7 @@ void Watchy::showTemperature(uint64_t wakeupBit){
 #ifdef USING_ACCELEROMETER
 void Watchy::showAccelerometer(uint64_t wakeupBit){
     guiState = APP_STATE;
+    runningApp = showAccState;
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
@@ -756,8 +747,6 @@ void Watchy::showAccelerometer(uint64_t wakeupBit){
     Accel acc;
 
     long previousMillis = 0;
-
-    guiState = APP_STATE;
 
     pinMode(BACK_BTN_PIN, INPUT);
 

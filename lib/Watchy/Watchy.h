@@ -53,9 +53,7 @@ class Watchy {
         void handleButtonPress();
         void handleInput();
         void watchfaceInteractionHandler();
-        void appInteractionHandler();
         void setISRs();
-        void deepSleep();
 
         //helper functions
         uint32_t getBatteryVoltage();
@@ -65,34 +63,46 @@ class Watchy {
         void syncNtpTime();
         String syncInternetStuff();
 
-        void showMenu(byte menuIndex, bool partialRefresh);
+        //void showMenu(byte menuIndex, bool partialRefresh);
+        void showMainMenu(bool partialRefresh);
+        void showClockMenu(bool partialRefresh);
+        
         virtual void drawWatchFace(); //override this method for different watch faces
         void showWatchFace(bool partialRefresh);
 
         //apps
-        void showStats(uint8_t btnPin = 0);
-        void showBuzz(uint8_t btnPin = 0);
-        void showCalendar(uint8_t btnPin = 0);
-        void connectWiFiGUI(uint8_t btnPin = 0);
-        void showClockMenu(uint8_t btnPin = 0);
-        void stopWatch(uint8_t btnPin = 0);
-        void setDarkMode(uint8_t btnPin = 0);
-        void setPowerSaver(uint8_t btnPin = 0);
-        void setTime(uint8_t btnPin = 0);
-        void wifiOta(uint8_t btnPin = 0);
+        void showStats(uint64_t wakeupBit = 0);
+        void showBuzz(uint64_t wakeupBit = 0);
+        void showCalendar(uint64_t wakeupBit = 0);
+        void connectWiFiGUI(uint64_t wakeupBit = 0);
+        void stopWatch(uint64_t wakeupBit = 0);
+        void setDarkMode(uint64_t wakeupBit = 0);
+        void setPowerSaver(uint64_t wakeupBit = 0);
+        void setTime(uint64_t wakeupBit = 0);
+        void wifiOta(uint64_t wakeupBit = 0);
         //void setupBLE();  //not yet created...or maybe a separate file for that
         #ifdef USING_ACCELEROMETER
-        void showAccelerometer(uint8_t btnPin = 0);
-        void showTemperature(uint8_t btnPin = 0);
+        void showAccelerometer(uint64_t wakeupBit = 0);
+        void showTemperature(uint64_t wakeupBit = 0);
         #endif //USING_ACCELEROMETER
         #ifdef INCLUDE_WEATHER
         weatherData getWeatherData(bool online = true); //added "online" argument to allow for forced RTC temp measurement
         #endif //INCLULDE_WEATHER
 
     private:
+        // GUI
+        void _mainMenuAppLauncher(uint64_t wakeupBit = 0);
+        void _menuInteractionHandler(void (*showMenu)(bool), uint32_t menuPages);
+        void _appInteractionHandler();
+        void _printPageNumber();
+        void _drawMenuOptions(const char *menuItems[], uint32_t menuOptions);
+        bool _tpWithinBounds(uint8_t minX, uint8_t maxX, uint8_t minY, uint8_t maxY);
+
+        // system functions
+        void _deepSleep();
+        void _initReset();
         void _rtcConfig(String datetime);    
         void _bmaConfig();
-        bool _tpWithinBounds(uint8_t minX, uint8_t maxX, uint8_t minY, uint8_t maxY);
         #ifdef DEBUG
         void _printCpuSettings();
         #endif
@@ -113,6 +123,9 @@ because the class is stored in normal RAM.
 The RTC_DATA_ATTR qualified variable is, by definition, stored in RTC RAM. */
 extern RTC_DATA_ATTR int guiState;
 extern RTC_DATA_ATTR int menuIndex;
+// to replace guiState and menuIndex with the following:
+extern RTC_DATA_ATTR appState_t runningApp;
+
 //extern RTC_DATA_ATTR bool WIFI_ON;  
 extern RTC_DATA_ATTR bool BLE_CONFIGURED;
 extern RTC_DATA_ATTR bool darkMode;    
