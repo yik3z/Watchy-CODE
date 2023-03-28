@@ -126,17 +126,6 @@ void Watchy::init(String datetime){
     switch (wakeup_reason)
     {
       case ESP_SLEEP_WAKEUP_EXT0: //RTC Alarm
-          RTC.alarm(ALARM_2); //resets the alarm flag in the RTC
-          if(guiState == WATCHFACE_STATE){
-              RTC.read(currentTime);
-              if((currentTime.Hour == 3) && (currentTime.Minute == 0)){ //full refresh + internet sync late at night
-                  internetSyncCounter++;
-                  if (internetSyncCounter>INTERNET_SYNC_INTERVAL){
-                    syncInternetStuff();
-                  }
-                  showWatchFace(false);
-              } else showWatchFace(true); //partial updates on tick
-          }
           #ifdef NIGHT_HOURLY_TIME_UPDATE
           if((hourlyTimeUpdate == 0) && (currentTime.Hour >= NIGHT_HOURS_START) && (currentTime.Hour < NIGHT_HOURS_END)){  //set to update every hour from NIGHT_HOURS_START onwards //
               RTC.setAlarm(ALM2_MATCH_MINUTES, 0, 0, 0, 0);   //set RTC alarm to hourly (0th minute of the hour)
@@ -147,8 +136,7 @@ void Watchy::init(String datetime){
               Serial.println("ALM2_MATCH_MINUTES: 0");
               #endif  //DEBUG_POWERSAVER
           }
-          else if((hourlyTimeUpdate == 1) && (currentTime.Hour >= NIGHT_HOURS_END)){  //set to update every minute from 7:00am onwards 
-        //else if(currentTime.Hour == 7 && currentTime.Minute == 0){ 
+          else if((hourlyTimeUpdate == 1) && (currentTime.Hour >= NIGHT_HOURS_END)){  //set to update every minute from 7:00am onwards
               RTC.setAlarm(ALM2_EVERY_MINUTE, 0, 0, 0, 0);  //set alarm back to 
               hourlyTimeUpdate = 0; 
               #ifdef DEBUG_POWERSAVER
@@ -156,7 +144,18 @@ void Watchy::init(String datetime){
               Serial.println(hourlyTimeUpdate);
               Serial.println("ALM2_EVERY_MINUTE");
               #endif  //DEBUG_POWERSAVER
+          }
           #endif  //NIGHT_HOURLY_TIME_UPDATE
+          RTC.alarm(ALARM_2); //resets the alarm flag in the RTC
+          if(guiState == WATCHFACE_STATE){
+              RTC.read(currentTime);
+              if((currentTime.Hour == 3) && (currentTime.Minute == 0)){ //full refresh + internet sync late at night
+                  internetSyncCounter++;
+                  if (internetSyncCounter>INTERNET_SYNC_INTERVAL){
+                    syncInternetStuff();
+                  }
+                  showWatchFace(false);
+              } else showWatchFace(true); //partial updates on tick
           }
           break;
       case ESP_SLEEP_WAKEUP_EXT1: //button Press
