@@ -116,7 +116,7 @@ void Watchface_DIN::drawNextCalendarEvent(){
 	// print event title
   display.setCursor(5, 170);
   for(int j=0; j<17;j++){	// seems to print the first char after the end of the last one
-    if(calEnt[nextCalEvent].calTitle[j]==NULL){
+    if(calEnt[nextCalEvent].calTitle[j]==0){
       break;
     }
     display.print(calEnt[nextCalEvent].calTitle[j]);
@@ -124,26 +124,28 @@ void Watchface_DIN::drawNextCalendarEvent(){
 	// print time of next event
   display.setFont(&FreeMonoBold9pt7b);
   display.setCursor(5, 185);
-	if(calEnt[nextCalEvent].calDate.Day < 10){
-	display.print("0");      
-	} 
-	display.print(calEnt[nextCalEvent].calDate.Day);
-	display.print("/");
-	if(calEnt[nextCalEvent].calDate.Month < 10){
-	display.print("0");      
-	}
-	display.print(calEnt[nextCalEvent].calDate.Month);
-	display.print(" ");
+  if (calEnt[nextCalEvent].calDate.Day!=currentTime.Day){	 // event isn't today (checks day only), print date
+    if(calEnt[nextCalEvent].calDate.Day < 10){
+    display.print("0");      
+    } 
+    display.print(calEnt[nextCalEvent].calDate.Day);
+    display.print("/");
+    if(calEnt[nextCalEvent].calDate.Month < 10){
+    display.print("0");      
+    }
+    display.print(calEnt[nextCalEvent].calDate.Month);
+    display.print(" ");
+  }
 	if (!calEnt[nextCalEvent].allDay){										//not all day event, print time
 		if(calEnt[nextCalEvent].calDate.Hour < 10){
 			display.print("0");      
 		}
-	display.print(calEnt[nextCalEvent].calDate.Hour);
-	display.print(":");
-	if(calEnt[nextCalEvent].calDate.Minute < 10){
-			display.print("0");      
-	}
-	display.print(calEnt[nextCalEvent].calDate.Minute);
+    display.print(calEnt[nextCalEvent].calDate.Hour);
+    display.print(":");
+    if(calEnt[nextCalEvent].calDate.Minute < 10){
+        display.print("0");      
+    }
+    display.print(calEnt[nextCalEvent].calDate.Minute);
   }
   return;
 }

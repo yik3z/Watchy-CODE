@@ -4,7 +4,7 @@ DS3232RTC Watchy::RTC(false);
 GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> Watchy::display(GxEPD2_154_D67(CS, DC, RESET, BUSY));
 FT6336 Watchy::ts(FT6336(TS_INTERRUPT_PIN, TS_RESET_PIN));
 
-RTC_DATA_ATTR int guiState;
+//RTC_DATA_ATTR int guiState;
 RTC_DATA_ATTR int menuIndex;
 
 #ifdef USING_ACCELEROMETER
@@ -35,6 +35,8 @@ extern RTC_DATA_ATTR calendarEntries calEnt[CALENDAR_ENTRY_COUNT];
 
 // menu
 extern RTC_DATA_ATTR uint32_t menuPageNumber;  // page number used by all the menus
+extern const uint32_t clockMenuPages;
+extern const uint32_t mainMenuPages;
 
 //stopwatch
 //for stopwatch (used by ISRs)
@@ -43,22 +45,22 @@ extern unsigned long stopWatchEndMillis;
 
 volatile unsigned long lastButtonInterrupt;  //si the last button time pressed
 
-String getValue(String data, char separator, int index)
-{
-  int found = 0;
-  int strIndex[] = {0, -1};
-  int maxIndex = data.length()-1;
+// String getValue(String data, char separator, int index)
+// {
+//   int found = 0;
+//   int strIndex[] = {0, -1};
+//   int maxIndex = data.length()-1;
 
-  for(int i=0; i<=maxIndex && found<=index; i++){
-    if(data.charAt(i)==separator || i==maxIndex){
-        found++;
-        strIndex[0] = strIndex[1]+1;
-        strIndex[1] = (i == maxIndex) ? i+1 : i;
-    }
-  }
+//   for(int i=0; i<=maxIndex && found<=index; i++){
+//     if(data.charAt(i)==separator || i==maxIndex){
+//         found++;
+//         strIndex[0] = strIndex[1]+1;
+//         strIndex[1] = (i == maxIndex) ? i+1 : i;
+//     }
+//   }
 
-  return found>index ? data.substring(strIndex[0], strIndex[1]) : "";
-}
+//   return found>index ? data.substring(strIndex[0], strIndex[1]) : "";
+// }
 
 Watchy::Watchy(){
 } //constructor
@@ -87,14 +89,14 @@ void Watchy::init(String datetime){
       Serial.print("Screen touched. x: ");
       Serial.print(touchLocation.x);
       Serial.print(" | y: ");
-      Serial.print(touchLocation.y);
+      Serial.println(touchLocation.y);
       #endif
     }
     display.init(0, false); //_initial_refresh to false to prevent full update on init
 
-    // #ifdef DEBUG_TIMING
-    // Serial.println("display init'd: " + String(millis()));
-    // #endif //DEBUG_TIMING
+    #ifdef DEBUG_TIMING_EXTENSIVE
+    Serial.println("display init'd: " + String(millis()));
+    #endif //DEBUG_TIMING_EXTENSIVE
 
     //critical battery / power saver mode
     if(lowBatt == 2 or powerSaver == 1){   
@@ -106,12 +108,13 @@ void Watchy::init(String datetime){
       {
       case ESP_SLEEP_WAKEUP_EXT0: //RTC Alarm
         RTC.alarm(ALARM_2); //resets the alarm flag in the RTC
-        if(guiState == WATCHFACE_STATE){
+        if(runningApp == watchFaceState){
           RTC.read(currentTime);
           showWatchFace(true); //partial updates on tick
         }
       case ESP_SLEEP_WAKEUP_EXT1: //button Press
-        handleButtonPress();
+        //handleButtonPress();
+        handleInput();
         break;
       default: //reset
         _initReset();
@@ -145,7 +148,7 @@ void Watchy::init(String datetime){
           }
           #endif  //NIGHT_HOURLY_TIME_UPDATE
           RTC.alarm(ALARM_2); //resets the alarm flag in the RTC
-          if(guiState == WATCHFACE_STATE){
+          if(runningApp == watchFaceState){
               RTC.read(currentTime);
               if((currentTime.Hour == 3) && (currentTime.Minute == 0)){ //full refresh + internet sync late at night
                   internetSyncCounter++;
@@ -161,7 +164,8 @@ void Watchy::init(String datetime){
           //wakeupBit = esp_sleep_get_ext1_wakeup_status(); //has been assigned earlier, before display.init()
           setISRs();
           while(true){
-              handleButtonPress();
+              //handleButtonPress();
+              handleInput();
               if((wakeupBit == 0) || (millis() - lastButtonInterrupt > BTN_TIMEOUT)){
                   break;
               }
@@ -171,9 +175,8 @@ void Watchy::init(String datetime){
         _initReset();
         vibMotor(200, 4);
         break;
-    }
-
-    }
+    } // switch
+    } // !(lowBatt == 2 or powerSaver == 1)
     _deepSleep();
 }
 
@@ -203,6 +206,7 @@ void Watchy::handleInput(){
   // back button always goes to watch face
   if (wakeupBit & BACK_BTN_MASK){ 
     if (runningApp != watchFaceState){
+      wakeupBit = 0;
       menuPageNumber = 0;   // reset menu page number when returning to watch face
       RTC.alarm(ALARM_2);   // reset the alarm flag in the RTC
       RTC.read(currentTime);
@@ -213,86 +217,39 @@ void Watchy::handleInput(){
   
   // GUI state-based event handling
   if (runningApp == watchFaceState){
-    watchfaceInteractionHandler();
-  }  else if (runningApp == mainMenuState){
-    _menuInteractionHandler(&showMainMenu, mainMenuPages);
-  }  else if (runningApp == clockMenuState){
-    _menuInteractionHandler(&showClockMenu, clockMenuPages);
-  }  else if (guiState > mainMenuState){
-    _appInteractionHandler();
+    _watchfaceInteractionHandler();
+  }  else if (runningApp == mainMenuState || runningApp == clockMenuState){
+    _menuInteractionHandler();
+  }  else if (runningApp > clockMenuState){
+    _appLauncherHandler();  //pass input on to app
   }
 } // handleInput
 
-// Handles button and touch events on the watchface
-void Watchy::watchfaceInteractionHandler(){
+// Handles button and touch events when on the watchface
+void Watchy::_watchfaceInteractionHandler(){
   if (wakeupBit & MENU_BTN_MASK){
-    showMainMenu(true);
-  } else if (wakeupBit & BACK_BTN_MASK){  
+    wakeupBit = 0;
+    showMainMenu();
+  } else if (wakeupBit & BACK_BTN_MASK){
+    wakeupBit = 0;
     // update watch face
     RTC.read(currentTime);
     showWatchFace(true);
   } else if(wakeupBit & TS_INT_PIN_MASK){
+    wakeupBit = 0;
     if(_tpWithinBounds(15,185,50,130)){
       showClockMenu();
     }else if(_tpWithinBounds(7,193,145,195)){
       showCalendar();
-    }else if(_tpWithinBounds(0,200,0,15)){
+    }else if(_tpWithinBounds(0,200,0,30)){
       showStats();
     }
   }
-  wakeupBit = 0;  //clear wakeupBit (TODO: do we even need to?)
 } // watchfaceInteractionHandler
-
-/*!
- * @brief Dispatches the interaction event to the correct app (based on runningApp). App apps here to be 
-
- *
- * @param wakeupBit (optional) interaction event to be passed on to the app
- *
- */
-void Watchy::_appInteractionHandler(){
-    switch(runningApp)
-  {
-    case 3:
-      showStats(wakeupBit);
-      break;
-    case 4:
-      showBuzz(wakeupBit);
-      break;          
-    case 5:
-      showCalendar(wakeupBit);
-      break;
-    case 7:
-      setTime(wakeupBit);
-      break;
-    case 8:
-      setDarkMode(wakeupBit);
-      break;   
-    case 9:
-      setPowerSaver(wakeupBit);      
-      break;           
-    case 10:
-      #ifdef USING_ACCELEROMETER
-      //showTemperature(wakeupBit);
-      #endif //USING_ACCELEROMETER
-      break;
-    case 11:
-      stopWatch(wakeupBit);
-      break;
-    case 12:
-      connectWiFiGUI(wakeupBit);
-      break;
-    case 13:
-      wifiOta(wakeupBit);
-      break;
-    default:
-      break;                              
-  }
-} // appInteractionHandler
 
 
 // checks whether the existing touch point is within the bounds
-bool Watchy::_tpWithinBounds(uint8_t minX, uint8_t maxX, uint8_t minY, uint8_t maxY){
+bool Watchy::_tpWithinBounds(int16_t minX, int16_t maxX, int16_t minY, int16_t maxY){
   if (touchLocation.x<minX){
     return false;
   } else if (touchLocation.x>maxX){
@@ -303,6 +260,37 @@ bool Watchy::_tpWithinBounds(uint8_t minX, uint8_t maxX, uint8_t minY, uint8_t m
     return false;
   }
   return true;
+}
+
+/*!
+ * @brief Checks whether touch point is within the given box
+ * @param boxNumber (uint8_t) box number to check; 1 to 4
+ *  
+ */
+bool Watchy::_tpWithinSelectedMenuBox(uint8_t boxNumber){
+  switch(boxNumber){
+    case 0:
+      return (_tpWithinBounds(25,95,13,83));
+    case 1:
+      return (_tpWithinBounds(105,175,13,83));
+    case 2:
+      return (_tpWithinBounds(25,95,93,163));
+    case 3:
+      return(_tpWithinBounds(105,175, 93,163));
+    default:
+      return false;
+  }
+
+}
+
+// checks whether the existing touch point is within any of the 4 menu boxes
+// Returns -1 if not within any menu box
+int32_t Watchy::_tpWithinMenuBox(){
+  if(_tpWithinBounds(25,95,13,83)) return 0;
+  else if (_tpWithinBounds(105,175,13,83)) return 1;
+  else if (_tpWithinBounds(25,95,93,163)) return 2;
+  else if (_tpWithinBounds(105,175, 93,163)) return 3;
+  else return -1;
 }
 
 // // scrolling menu by Alex Story
@@ -341,15 +329,15 @@ bool Watchy::_tpWithinBounds(uint8_t minX, uint8_t maxX, uint8_t minY, uint8_t m
 //       display.println(menuItems[i]);
 //     }   
 //   }
-//   #ifdef DEBUG_TIMING
+//   #ifdef DEBUG_TIMING_EXTENSIVE
 //   Serial.print("Start drawing menu: ");
 //   Serial.println(millis());
-//   #endif //DEBUG_TIMING
+//   #endif //DEBUG_TIMING_EXTENSIVE
 //   display.display(partialRefresh, darkMode);
-//   #ifdef DEBUG_TIMING
+//   #ifdef DEBUG_TIMING_EXTENSIVE
 //   Serial.print("End drawing menu: ");
 //   Serial.println(millis());
-//   #endif //DEBUG_TIMING  
+//   #endif //DEBUG_TIMING_EXTENSIVE  
 // }   //showMenu
 
 //HELPER FUNCTIONS
@@ -369,10 +357,10 @@ void Watchy::_deepSleep(){ //TODO: set all pins to inputs to save power??
 
   display.hibernate();
   ts.setPowerMode(FT6336_PWR_MODE_MONITOR); // set touchscreen to monitor (low power) mode 
-  #ifdef DEBUG_TOUCHSCREEN
-  Serial.print("Touchscreen Power Mode: ");
-  Serial.println(ts.getPowerMode());
-  #endif
+  // #ifdef DEBUG_TOUCHSCREEN
+  // Serial.print("Touchscreen Power Mode: ");
+  // Serial.println(ts.getPowerMode());
+  // #endif
   esp_sleep_enable_ext0_wakeup(RTC_PIN, 0); //enable deep sleep wake on RTC interrupt
   esp_sleep_enable_ext1_wakeup(BTN_PIN_MASK, ESP_EXT1_WAKEUP_ANY_HIGH); //enable deep sleep wake on button press
   adc_power_off();
@@ -384,21 +372,7 @@ void Watchy::_deepSleep(){ //TODO: set all pins to inputs to save power??
   esp_deep_sleep_start();
 }
 
-void Watchy::_rtcConfig(String datetime){
-  if(datetime != NULL){
-    const time_t FUDGE(30);//fudge factor to allow for upload time, etc. (seconds, YMMV)
-    tmElements_t tm;
-    tm.Year = getValue(datetime, ':', 0).toInt() - YEAR_OFFSET;//offset from 1970, since year is stored in uint8_t        
-    tm.Month = getValue(datetime, ':', 1).toInt();
-    tm.Day = getValue(datetime, ':', 2).toInt();
-    tm.Hour = getValue(datetime, ':', 3).toInt();
-    tm.Minute = getValue(datetime, ':', 4).toInt();
-    tm.Second = getValue(datetime, ':', 5).toInt();
-
-    time_t t = makeTime(tm) + FUDGE;
-    RTC.set(t);
-
-  }
+void Watchy::_rtcConfig(){
   //https://github.com/JChristensen/DS3232RTC
   RTC.squareWave(SQWAVE_NONE); //disable square wave output
   RTC.setAlarm(ALM2_EVERY_MINUTE, 0, 0, 0, 0); //alarm wakes up Watchy every minute
@@ -474,7 +448,7 @@ void Watchy::vibMotor(uint8_t intervalMs, uint8_t length){
 }
 
 void Watchy::showWatchFace(bool partialRefresh){
-    guiState = WATCHFACE_STATE;
+    //guiState = WATCHFACE_STATE;
     runningApp = watchFaceState;
     display.setFullWindow();
     drawWatchFace();
@@ -625,7 +599,7 @@ void IRAM_ATTR ISRStopwatchEnd() {
 
 // Init routine to be run after a reset
 void Watchy::_initReset(){
-  //_rtcConfig(datetime);
+  _rtcConfig();
   bootTime = RTC.get();
   ts.begin(200);
   //_bmaConfig(); //crashes watchy. B<A starts up in suspend mode so no need to do anything

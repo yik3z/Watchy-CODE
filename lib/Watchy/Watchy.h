@@ -50,9 +50,7 @@ class Watchy {
     public:
         Watchy();
         void init(String datetime = "");
-        void handleButtonPress();
-        void handleInput();
-        void watchfaceInteractionHandler();
+        //void handleButtonPress();
         void setISRs();
 
         //helper functions
@@ -62,24 +60,24 @@ class Watchy {
         bool initWiFi();
         void syncNtpTime();
         String syncInternetStuff();
-
-        //void showMenu(byte menuIndex, bool partialRefresh);
-        void showMainMenu(bool partialRefresh);
-        void showClockMenu(bool partialRefresh);
         
         virtual void drawWatchFace(); //override this method for different watch faces
-        void showWatchFace(bool partialRefresh);
+        void showWatchFace(bool partialRefresh = true);
 
-        //apps
-        void showStats(uint64_t wakeupBit = 0);
-        void showBuzz(uint64_t wakeupBit = 0);
-        void showCalendar(uint64_t wakeupBit = 0);
-        void connectWiFiGUI(uint64_t wakeupBit = 0);
-        void stopWatch(uint64_t wakeupBit = 0);
-        void setDarkMode(uint64_t wakeupBit = 0);
-        void setPowerSaver(uint64_t wakeupBit = 0);
-        void setTime(uint64_t wakeupBit = 0);
-        void wifiOta(uint64_t wakeupBit = 0);
+        // Apps n GUI
+        void showMainMenu(bool initial = false, bool partialRefresh = true);
+        void showClockMenu(bool initial = false, bool partialRefresh = true);
+        void handleInput();
+        void launchApp(appID_t appToLaunch);
+        void showStats();
+        void showBuzz();
+        void showCalendar();
+        void connectWiFiGUI();
+        void stopWatch();
+        void setDarkMode();
+        void setPowerSaver();
+        void setTime();
+        void wifiOta();
         //void setupBLE();  //not yet created...or maybe a separate file for that
         #ifdef USING_ACCELEROMETER
         void showAccelerometer(uint64_t wakeupBit = 0);
@@ -91,17 +89,23 @@ class Watchy {
 
     private:
         // GUI
-        void _mainMenuAppLauncher(uint64_t wakeupBit = 0);
-        void _menuInteractionHandler(void (*showMenu)(bool), uint32_t menuPages);
-        void _appInteractionHandler();
-        void _printPageNumber();
+        void _watchfaceInteractionHandler();
+        void _menuInteractionHandler();
+        appID_t _selectMenuApp(int32_t boxNumber);
+        appID_t _chooseClockMenuApp(int32_t appIndex);
+        appID_t _chooseMainMenuApp(int32_t appIndex);
+        void _appLauncherHandler(appID_t launchAppID = none_appState);
+        void _drawPageNumber();
         void _drawMenuOptions(const char *menuItems[], uint32_t menuOptions);
-        bool _tpWithinBounds(uint8_t minX, uint8_t maxX, uint8_t minY, uint8_t maxY);
+        bool _tpWithinBounds(int16_t minX, int16_t maxX, int16_t minY, int16_t maxY);
+        bool _tpWithinSelectedMenuBox(uint8_t boxNumber);
+        int32_t _tpWithinMenuBox();
+
 
         // system functions
         void _deepSleep();
         void _initReset();
-        void _rtcConfig(String datetime);    
+        void _rtcConfig();    
         void _bmaConfig();
         #ifdef DEBUG
         void _printCpuSettings();
@@ -124,7 +128,7 @@ The RTC_DATA_ATTR qualified variable is, by definition, stored in RTC RAM. */
 extern RTC_DATA_ATTR int guiState;
 extern RTC_DATA_ATTR int menuIndex;
 // to replace guiState and menuIndex with the following:
-extern RTC_DATA_ATTR appState_t runningApp;
+extern RTC_DATA_ATTR appID_t runningApp;
 
 //extern RTC_DATA_ATTR bool WIFI_ON;  
 extern RTC_DATA_ATTR bool BLE_CONFIGURED;
@@ -139,9 +143,5 @@ extern RTC_DATA_ATTR bool lastCalendarSyncSuccess;
 extern RTC_DATA_ATTR BMA423 sensor;
 #endif //USING_ACCELEROMETER
 
-
-
-// for M09 screen
-//extern RTC_DATA_ATTR uint8_t _buffer[(200/8) * 200];
 
 #endif

@@ -5,6 +5,9 @@
   #ifdef DEBUG
   //#define DEBUG_CALENDAR    //enable printing of calendar debug messages
   #define DEBUG_TIMING        //enable printing of timinings (millis())
+  #ifdef DEBUG_TIMING
+    //#define DEBUG_TIMING_EXTENSIVE        //enable printing of timinings (millis())
+  #endif
   //#define DEBUG_POWERSAVER  //enable printing of power saver - related messages
   #endif //DEBUG
 #define INCLUDE_WEATHER
@@ -89,11 +92,14 @@
 #define CRIT_BATT_THRESHOLD 5
 //#define USING_ACCELEROMETER   //whether the accelerometer gets initialised. DO NOT ENABLE
 
-#define BTN_DEBOUNCE_INTERVAL 20 //minimum time between buttonpresses (in ms) for it to be counted
+#define BTN_DEBOUNCE_INTERVAL 50 //minimum time between buttonpresses (in ms) for it to be counted
 #define BTN_TIMEOUT 2500        //max time to wait for any uncleared button events before ignoring them and going to sleep
 
-//experimental
-enum appState_t { watchFaceState,
+// ID for each app on Watchy. Append apps to this list when installed.
+// Also append apps to _appLauncherHandler function so it can be called.
+enum appID_t { 
+                none_appState = -1,
+                watchFaceState,
 
                 // menus
                 mainMenuState,
