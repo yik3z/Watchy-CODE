@@ -93,6 +93,10 @@ void Watchy::init(String datetime){
       Serial.print(touchLocation.x);
       Serial.print(" | y: ");
       Serial.println(touchLocation.y);
+      if (touchLocation.x == 0 && touchLocation.y == 0){
+        // probably a bogus touch, just go back to sleep
+        _deepSleep();
+      }
       #endif
     }
     display.init(0, false); //_initial_refresh to false to prevent full update on init
