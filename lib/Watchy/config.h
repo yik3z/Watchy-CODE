@@ -3,10 +3,12 @@
 
 #define DEBUG             //enable printing of general debug messages
   #ifdef DEBUG
+  #define DEBUG_EXTENSIVE        //enable printing of more messages
   //#define DEBUG_CALENDAR    //enable printing of calendar debug messages
   #define DEBUG_TIMING        //enable printing of timinings (millis())
   #ifdef DEBUG_TIMING
     //#define DEBUG_TIMING_EXTENSIVE        //enable printing of timinings (millis())
+    
   #endif
   //#define DEBUG_POWERSAVER  //enable printing of power saver - related messages
   #endif //DEBUG
@@ -21,8 +23,8 @@
 #define DC 10
 #define RESET 9
 #define BUSY 19
-#define TS_RESET_PIN     GPIO_NUM_0   //TODO: Not connected
-#define TS_INTERRUPT_PIN GPIO_NUM_34
+#define TS_RESET_PIN     GPIO_NUM_34
+#define TS_INTERRUPT_PIN GPIO_NUM_35
 #define VIB_MOTOR_PIN 13
 #define MENU_BTN_PIN 2
 #define BACK_BTN_PIN 25
@@ -33,8 +35,8 @@
 #define UP_BTN_MASK GPIO_SEL_32
 #define DOWN_BTN_MASK GPIO_SEL_4
 #define ACC_INT_MASK GPIO_SEL_14
-#define TS_INT_PIN_MASK GPIO_SEL_34 
-#define BTN_PIN_MASK MENU_BTN_MASK|BACK_BTN_MASK|UP_BTN_MASK|DOWN_BTN_MASK |TS_INT_PIN_MASK
+#define TS_INT_PIN_MASK GPIO_SEL_35 
+#define BTN_PIN_MASK MENU_BTN_MASK|BACK_BTN_MASK|UP_BTN_MASK|DOWN_BTN_MASK|TS_INT_PIN_MASK
 
 //display
 #define DISPLAY_WIDTH 200

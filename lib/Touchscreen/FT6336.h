@@ -66,7 +66,7 @@ public:
   uint8_t touched(void);
   TS_Point getPoint(uint8_t n = 0);
   void setPowerMode(uint8_t);
-  bool wakePanel(bool waitForReady = true);
+  void wakePanel(bool waitForReady = false);
   uint8_t getPowerMode();
   uint8_t getOperatingMode();
 

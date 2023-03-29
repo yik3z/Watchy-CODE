@@ -89,8 +89,8 @@ boolean FT6336::begin(uint8_t thresh) {
   Serial.println(_readRegister8(FT6336_REG_INT_MODE));
   Serial.print("Power Mode: ");
   Serial.println(_readRegister8(FT6336_REG_PWR_MODE));
-  Serial.print("Operating Mode(?): ");
-  Serial.println(_readRegister8(FT6336_REG_STATE));
+  // Serial.print("Operating Mode(?): ");
+  // Serial.println(_readRegister8(FT6336_REG_STATE));
   Serial.print("Touch Thresh: ");
   Serial.println(_readRegister8(FT6336_REG_THRESHHOLD));
   // dump all registers
@@ -184,38 +184,33 @@ void FT6336::setPowerMode(uint8_t pwrMode) {
 /*!
     @brief  Wakes panel from hibernate mode.
     @param waitForReady Wait for panel to be ready (i.e. block) before returning .
-    @returns True if panel is successfully woken up.
+    @returns None
 */
 /**************************************************************************/
-bool FT6336::wakePanel(bool waitForReady) {
+void FT6336::wakePanel(bool waitForReady) {
   if(rstPin==-1){
     //pin not defined
     #ifdef DEBUG_TOUCHSCREEN 
     Serial.println("Cannot wake panel. No reset pin defined");
     #endif
-    return false;
+    return;
   } 
   else{
-    // digitalWrite(rstPin, LOW);
-    // pinMode(rstPin, OUTPUT);
-    // delay(2); //between 0.5-1ms for int or >1ms for rst
-    // pinMode(rstPin, INPUT);
     digitalWrite(rstPin, LOW);
     pinMode(rstPin, OUTPUT);
-    delay(5); // 1ms for rstPin or between 0.5-1ms for intPin
-    pinMode(rstPin, INPUT);
+    delay(5); // 1(?)ms for rstPin or between 0.5-1ms for intPin
+    pinMode(rstPin, INPUT); // Set to High-Z
     if(waitForReady){
       #if defined(ESP8266) || defined(ESP32)
       esp_sleep_enable_timer_wakeup(300000); // post reset delay
       esp_light_sleep_start();
+      esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_TIMER);  // otherwise ESP will wakeup after being put to deep sleep
       #else
       delay(300); // post reset delay
       #endif
-      if(getPowerMode() == FT6336_PWR_MODE_ACTIVE) return true;
     }
       
   }
-  return false; //change to true when it works
 }
 
 /************ lower level i/o **************/
