@@ -54,12 +54,13 @@ void Watchy::stopWatch(){
     runningApp = stopWatchState;
     enum stopwatchCommand {
         none,
+        justLaunched,
         resetTimer,
         startTimer,
         stopTimer
-    } input;
-
-    if(wakeupBit == 0) input = none;
+    };
+    stopwatchCommand input = none;
+    if(wakeupBit == 0) input = justLaunched;
     else if (wakeupBit & UP_BTN_MASK) input = resetTimer;
     else if (wakeupBit & DOWN_BTN_MASK) input = startTimer;
     else if (wakeupBit & TS_INT_PIN_MASK){
@@ -69,9 +70,10 @@ void Watchy::stopWatch(){
             input = resetTimer;
         }
     }
+    if (input == none) return;  // do nothing
     wakeupBit = 0;
 
-    if((input == none) || (input == resetTimer)){    //entering the app for the first time
+    if((input == justLaunched) || (input == resetTimer)){    //entering the app for the first time
         finalTimeElapsed = 0;
         display.setFullWindow();
         display.fillScreen(bgColour);

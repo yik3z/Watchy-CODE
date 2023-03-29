@@ -207,7 +207,7 @@ void Watchy::handleInput(){
   if (wakeupBit & BACK_BTN_MASK){ 
     if (runningApp != watchFaceState){
       wakeupBit = 0;
-      menuPageNumber = 0;   // reset menu page number when returning to watch face
+      menuPageNumber = 1;   // reset menu page number when returning to watch face
       RTC.alarm(ALARM_2);   // reset the alarm flag in the RTC
       RTC.read(currentTime);
       showWatchFace(false);
@@ -216,6 +216,13 @@ void Watchy::handleInput(){
   } else if (wakeupBit & TS_INT_PIN_MASK){
     if (runningApp != watchFaceState){
       if(_tpWithinBounds(0,30,0,30)){
+        wakeupBit = 0;
+        menuPageNumber = 1;   // reset menu page number when returning to watch face
+        RTC.alarm(ALARM_2);   // reset the alarm flag in the RTC
+        RTC.read(currentTime);
+        showWatchFace(false);
+        return;
+      } else if(_tpWithinBounds(0,30,170,200)){
         wakeupBit = 0;
         menuPageNumber = 0;   // reset menu page number when returning to watch face
         RTC.alarm(ALARM_2);   // reset the alarm flag in the RTC
