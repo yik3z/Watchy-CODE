@@ -79,7 +79,7 @@ void Watchy::init(String datetime){
     #ifdef DEBUG_EXTENSIVE
     Serial.print("Wakeup Reason: ");
     Serial.println(wakeup_reason);
-    _printCpuSettings();
+    //_printCpuSettings();
     #endif
     #endif //DEBUG
 
@@ -100,6 +100,7 @@ void Watchy::init(String datetime){
       #endif
     }
     display.init(0, false); //_initial_refresh to false to prevent full update on init
+    checkChargingStatus();
 
     #ifdef DEBUG_TIMING_EXTENSIVE
     Serial.println("display init'd: " + String(millis()));
@@ -108,8 +109,15 @@ void Watchy::init(String datetime){
     //critical battery / power saver mode
     if(lowBatt == 2 or powerSaver == 1){   
       if(!hourlyTimeUpdate){
-          RTC.setAlarm(ALM2_MATCH_MINUTES, 0, 0, 0, 0);   //set RTC alarm to hourly (0th minute of the hour)
-          hourlyTimeUpdate = 1;
+        RTC.setAlarm(ALM2_MATCH_MINUTES, 0, 0, 0, 0);   //set RTC alarm to hourly (0th minute of the hour)
+        hourlyTimeUpdate = 1;
+        ts.setPowerMode(FT6336_PWR_MODE_HIBERNATE); // hibernate (i.e. turn off) touchscreen
+        #ifdef DEBUG_POWERSAVER
+        Serial.print("Touch panel put to hibernate (3): ");
+        Serial.println(ts.getPowerMode());
+        Serial.print("hourlyTimeUpdate: ");
+        Serial.println(hourlyTimeUpdate);
+        #endif  //DEBUG_POWERSAVER
       }
       switch (wakeup_reason)
       {
@@ -133,45 +141,44 @@ void Watchy::init(String datetime){
     switch (wakeup_reason)
     {
       case ESP_SLEEP_WAKEUP_EXT0: //RTC Alarm
-          #ifdef NIGHT_HOURLY_TIME_UPDATE
-          if((hourlyTimeUpdate == 0) && (currentTime.Hour >= NIGHT_HOURS_START) && (currentTime.Hour < NIGHT_HOURS_END)){  //set to update every hour from NIGHT_HOURS_START onwards //
-              RTC.setAlarm(ALM2_MATCH_MINUTES, 0, 0, 0, 0);   //set RTC alarm to hourly (0th minute of the hour)
-              hourlyTimeUpdate = 1;
-              ts.setPowerMode(FT6336_PWR_MODE_HIBERNATE); // hibernate (i.e. turn off) touchscreen
-              #ifdef DEBUG_POWERSAVER
-              Serial.print("Touch panel put to hibernate (3): ");
-              Serial.println(ts.getPowerMode());
-              Serial.print("hourlyTimeUpdate: ");
-              Serial.println(hourlyTimeUpdate);
-              Serial.println("ALM2_MATCH_MINUTES: 0");
-              #endif  //DEBUG_POWERSAVER
-          }
-          else if((hourlyTimeUpdate == 1) && (currentTime.Hour >= NIGHT_HOURS_END)){  //set to update every minute from 7:00am onwards
-              RTC.setAlarm(ALM2_EVERY_MINUTE, 0, 0, 0, 0);  //set alarm back to alarm every minute
-              hourlyTimeUpdate = 0; 
-              #ifdef DEBUG_POWERSAVER
-              Serial.print("Touch panel woken.");
-              #endif
-              ts.wakePanel(false);  // re-enable touch panel after night hours end
-              #ifdef DEBUG_POWERSAVER
-              Serial.print("hourlyTimeUpdate: ");
-              Serial.println(hourlyTimeUpdate);
-              Serial.println("ALM2_EVERY_MINUTE");
-              #endif  //DEBUG_POWERSAVER
-          }
-          #endif  //NIGHT_HOURLY_TIME_UPDATE
-          RTC.alarm(ALARM_2); //resets the alarm flag in the RTC
-          if(runningApp == watchFaceState){
-              RTC.read(currentTime);
-              if((currentTime.Hour == 3) && (currentTime.Minute == 0)){ //full refresh + internet sync late at night
-                  internetSyncCounter++;
-                  if (internetSyncCounter>INTERNET_SYNC_INTERVAL){
-                    syncInternetStuff();
-                  }
-                  showWatchFace(false);
-              } else showWatchFace(true); //partial updates on tick
-          }
-          break;
+        RTC.alarm(ALARM_2); //resets the alarm flag in the RTC
+        RTC.read(currentTime);
+        #ifdef NIGHT_HOURLY_TIME_UPDATE
+        if((hourlyTimeUpdate == 0) && (currentTime.Hour >= NIGHT_HOURS_START) && (currentTime.Hour < NIGHT_HOURS_END)){  //set to update every hour from NIGHT_HOURS_START onwards //
+          RTC.setAlarm(ALM2_MATCH_MINUTES, 0, 0, 0, 0);   //set RTC alarm to hourly (0th minute of the hour)
+          hourlyTimeUpdate = 1;
+          ts.setPowerMode(FT6336_PWR_MODE_HIBERNATE); // hibernate (i.e. turn off) touchscreen
+          #ifdef DEBUG_POWERSAVER
+          Serial.print("Touch panel put to hibernate (3): ");
+          Serial.println(ts.getPowerMode());
+          Serial.print("hourlyTimeUpdate: ");
+          Serial.println(hourlyTimeUpdate);
+          #endif  //DEBUG_POWERSAVER
+        }
+        else if((hourlyTimeUpdate == 1) && (currentTime.Hour >= NIGHT_HOURS_END)){  //set to update every minute from 7:00am onwards
+          RTC.setAlarm(ALM2_EVERY_MINUTE, 0, 0, 0, 0);  //set alarm back to alarm every minute
+          hourlyTimeUpdate = 0; 
+          #ifdef DEBUG_POWERSAVER
+          Serial.print("Touch panel woken.");
+          #endif
+          ts.wakePanel(false);  // re-enable touch panel after night hours end
+          #ifdef DEBUG_POWERSAVER
+          Serial.print("hourlyTimeUpdate: ");
+          Serial.println(hourlyTimeUpdate);
+          Serial.println("ALM2_EVERY_MINUTE");
+          #endif  //DEBUG_POWERSAVER
+        }
+        #endif  //NIGHT_HOURLY_TIME_UPDATE
+        if(runningApp == watchFaceState){
+          if((currentTime.Hour == 3) && (currentTime.Minute == 0)){ //full refresh + internet sync late at night
+            internetSyncCounter++;
+            if (internetSyncCounter>INTERNET_SYNC_INTERVAL){
+              syncInternetStuff();
+            }
+            showWatchFace(false);
+          } else showWatchFace(true); //partial updates on tick
+        }
+        break;
       case ESP_SLEEP_WAKEUP_EXT1: //button Press
           if(hourlyTimeUpdate == 1){
             // enable touchscreen
@@ -622,6 +629,24 @@ uint8_t Watchy::getBatteryPercent(uint32_t vBatt){
     } else lowBatt = 0;
     return (uint8_t)percentage;
 } 
+
+// Reads the charging sense pin to determine if battery is currently charging
+// Not sure what "not charging but AC present" outputs
+void Watchy::checkChargingStatus(){
+  pinMode(CHARGING_SENSE_PIN, INPUT_PULLUP);
+  bool chargingStatus = digitalRead(CHARGING_SENSE_PIN);
+  pinMode(CHARGING_SENSE_PIN, INPUT);
+  bool dischargingStatus = digitalRead(CHARGING_SENSE_PIN);
+  chargingFlag = (chargingStatus << 1) | dischargingStatus;
+  // !charging , discharging
+  // 00 = charging
+  // 10 = AC
+  // 11 = on battery
+  #ifdef DEBUG
+  Serial.println("Battery Charging Status: ");
+  Serial.println(chargingFlag);
+  #endif
+}
 
 #ifdef DEBUG
 // Prints the cpu settings to serial port, for debug

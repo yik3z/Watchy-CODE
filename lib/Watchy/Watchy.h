@@ -46,6 +46,7 @@ class Watchy {
         tmElements_t currentTime;
         esp_adc_cal_characteristics_t adc_chars;
         esp_sleep_wakeup_cause_t wakeup_reason;
+        int chargingFlag;
 
     public:
         Watchy();
@@ -60,6 +61,7 @@ class Watchy {
         bool initWiFi();
         void syncNtpTime();
         String syncInternetStuff();
+        void checkChargingStatus();
         
         virtual void drawWatchFace(); //override this method for different watch faces
         void showWatchFace(bool partialRefresh = true);

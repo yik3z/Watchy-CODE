@@ -10,7 +10,7 @@
     //#define DEBUG_TIMING_EXTENSIVE        //enable printing of timinings (millis())
     
   #endif
-  //#define DEBUG_POWERSAVER  //enable printing of power saver - related messages
+  #define DEBUG_POWERSAVER  //enable printing of power saver - related messages
   #endif //DEBUG
 #define INCLUDE_WEATHER
 
@@ -25,7 +25,7 @@
 #define BUSY 19
 #define TS_RESET_PIN        GPIO_NUM_0
 #define TS_INTERRUPT_PIN    GPIO_NUM_34
-#define BATT_CHG_SENSE_PIN  GPIO_NUM_35
+#define CHARGING_SENSE_PIN  GPIO_NUM_35
 #define VIB_MOTOR_PIN 13
 #define MENU_BTN_PIN 2
 #define BACK_BTN_PIN 25
