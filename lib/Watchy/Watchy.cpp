@@ -249,13 +249,14 @@ void Watchy::_watchfaceInteractionHandler(){
     wakeupBit = 0;
     if(_tpWithinBounds(15,185,50,130)){
       showClockMenu();
-    }else if(_tpWithinBounds(7,193,145,195)){
+    }else if((calEnt[0].calTitle[0] != 0) && (_tpWithinBounds(7,193,145,195))){ // check that calendar isn't empty too
       showCalendar();
     }else if(_tpWithinBounds(0,200,0,30)){
       showStats();
     }else{ // update watch face
-      RTC.read(currentTime);
-      showWatchFace(true);
+      // RTC.read(currentTime);
+      // showWatchFace(true);
+      return;
     }
   }
 } // watchfaceInteractionHandler

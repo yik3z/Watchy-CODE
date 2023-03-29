@@ -57,8 +57,8 @@ void Watchy::stopWatch(){
         resetTimer,
         startTimer,
         stopTimer
-    } input;
-
+    } ;
+    stopwatchCommand input = none;
     if(wakeupBit == 0) input = none;
     else if (wakeupBit & UP_BTN_MASK) input = resetTimer;
     else if (wakeupBit & DOWN_BTN_MASK) input = startTimer;
@@ -194,6 +194,10 @@ void Watchy::showStats(){
     #endif
     //guiState = APP_STATE;
     runningApp = showStatsState;
+
+    // TODO: handle inputs
+    wakeupBit = 0;
+
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
@@ -283,6 +287,7 @@ void Watchy::showCalendar(){
 	int x = 0;
 	int y = 20;
 	
+    // TODO: Implement touch
 	if(wakeupBit & UP_BTN_MASK){
 		calendarPage--;
 	}else if(wakeupBit & DOWN_BTN_MASK){
@@ -291,6 +296,9 @@ void Watchy::showCalendar(){
 	else{   // no button was pressed -> app just entered, set calendar to page 1
 		calendarPage = 1;
 	}
+    
+    wakeupBit = 0;
+    
 	if(calendarPage>CALENDAR_MAX_PAGES){ // stop calendar scrolling at last page
 		calendarPage = CALENDAR_MAX_PAGES;
 	}
@@ -366,6 +374,10 @@ void Watchy::connectWiFiGUI(){
     #endif
 	//guiState = APP_STATE; 
     runningApp = connectWiFiState;
+    
+    // TODO: handle inputs
+    wakeupBit = 0;
+    
 	display.setFullWindow();
 	display.fillScreen(bgColour);
 	display.setFont(&FreeMonoBold9pt7b);
@@ -425,6 +437,10 @@ void Watchy::wifiOta(){
     #endif
 	//guiState = APP_STATE;  
     runningApp = wifiOtaState;
+    
+    // TODO: handle inputs
+    wakeupBit = 0;
+    
 	display.setFullWindow();
 	display.fillScreen(bgColour);
 	display.setFont(&FreeMonoBold9pt7b);
@@ -472,6 +488,7 @@ void Watchy::wifiOta(){
 		Serial.println(WiFi.localIP());
 		Serial.println("Press down button to cancel");
         
+        // TODO: add touch interrupt
 		attachInterrupt(DOWN_BTN_PIN, ISRStopwatchEnd, RISING); //use the same stopwatch interrupt function to stop OTA
 
 		display.init(0, false); //re-init after hibernating (waiting for wifi)
@@ -542,6 +559,10 @@ void Watchy::setPowerSaver(){ //does not do anything at the moment
 		Serial.println(powerSaver);  
 		#endif  //DEBUG_POWERSAVER
 	}
+    
+    // TODO: handle inputs, implement touch
+    wakeupBit = 0;
+    
 	display.println(powerSaver ? "On" : "Off");
 	// display.setCursor(45, 125);
 	// display.println("Not in use!");
@@ -564,6 +585,10 @@ void Watchy::setDarkMode(){
 		Serial.println(darkMode);   //debug
 		#endif
 	}
+    
+    // TODO: handle inputs
+    wakeupBit = 0;
+    
 	display.setFullWindow();
 	display.fillScreen(bgColour);
 	display.setFont(&FreeMonoBold9pt7b);
@@ -589,6 +614,11 @@ void Watchy::setTime(){
     #endif
     //guiState = APP_STATE;
     runningApp = setTimeState;
+    
+    // TODO: handle inputs
+    // TODO: convert to sleep-style app
+    wakeupBit = 0;
+    
     RTC.read(currentTime);
     int8_t minute = currentTime.Minute;
     int8_t hour = currentTime.Hour;
@@ -748,6 +778,10 @@ void Watchy::setTime(){
 void Watchy::showTemperature(uint64_t wakeupBit){
     //guiState = APP_STATE;
     runningApp = showTempState;
+    
+    // TODO: handle inputs
+    wakeupBit = 0;
+    
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
@@ -768,6 +802,10 @@ void Watchy::showTemperature(uint64_t wakeupBit){
 void Watchy::showAccelerometer(uint64_t wakeupBit){
     //guiState = APP_STATE;
     runningApp = showAccState;
+    
+    // TODO: handle inputs
+    wakeupBit = 0;
+    
     display.setFullWindow();
     display.fillScreen(bgColour);
     display.setFont(&FreeMonoBold9pt7b);
