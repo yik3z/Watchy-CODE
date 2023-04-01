@@ -36,7 +36,7 @@
 #define FT6336_INT_TRIG_MODE          0x01  // Interrupt Trigger mode (pulse low for each data ready to be transmitted)
 
 #define FT6336_POINTRATE_ACTIVE       80    // Report interval in Active Mode, in milliseconds
-#define FT6336_POINTRATE_MONITOR      200   // Report interval in Monitor Mode, in milliseconds
+#define FT6336_POINTRATE_MONITOR      80   // Report interval in Monitor Mode, in milliseconds
 
 //#define FT6336_PWR_MODE_ACTIVE            // Active Mode. DEFINED IN FT6336.h
 //#define FT6336_PWR_MODE_MONITOR           // Monitor (Low Power) Mode. DEFINED IN FT6336.h

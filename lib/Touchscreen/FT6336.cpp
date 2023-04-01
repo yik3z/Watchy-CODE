@@ -5,24 +5,10 @@
  *
  * @section intro_sec Introduction
  *
- * This is a library for the Adafruit Capacitive Touch Screens
+ * Based on the library for the Adafruit Capacitive Touch Screens
  *
  * ----> http://www.adafruit.com/products/1947
- *
- * Check out the links above for our tutorials and wiring diagrams
- * This chipset uses I2C to communicate
- *
- * Adafruit invests time and resources providing this open source code,
- * please support Adafruit and open-source hardware by purchasing
- * products from Adafruit!
- *
- * @section author Author
- *
- * Written by Limor Fried/Ladyada for Adafruit Industries.
- *
- * @section license License
-
- * MIT license, all text above must be included in any redistribution
+ * 
  */
 
 #include "FT6336.h"
@@ -171,46 +157,45 @@ uint8_t FT6336::getPowerMode(void) {
 */
 /**************************************************************************/
 void FT6336::setPowerMode(uint8_t pwrMode) {
-  if ((pwrMode == FT6336_PWR_MODE_HIBERNATE) && (rstPin == -1)) {
-    #ifdef DEBUG_TOUCHSCREEN 
-    Serial.println("Hibernate command ignored. No reset pin defined.");
-    #endif
-    return;
-  }
+  // if ((pwrMode == FT6336_PWR_MODE_HIBERNATE) && (rstPin == -1)) {
+  //   #ifdef DEBUG_TOUCHSCREEN 
+  //   Serial.println("Hibernate command ignored. No reset pin defined.");
+  //   #endif
+  //   return;
+  // }
   _writeRegister8(FT6336_REG_PWR_MODE,pwrMode);
 }
 
 /**************************************************************************/
 /*!
-    @brief  Wakes panel from hibernate mode.
+    @brief  Wakes panel from hibernate mode. Note: you can just issue an i2c command to wake the panel.
     @param waitForReady Wait for panel to be ready (i.e. block) before returning .
     @returns None
 */
 /**************************************************************************/
-void FT6336::wakePanel(bool waitForReady) {
+void FT6336::wakePanel(bool doInit) {
   if(rstPin==-1){
-    //pin not defined
-    #ifdef DEBUG_TOUCHSCREEN 
-    Serial.println("Cannot wake panel. No reset pin defined");
-    #endif
-    return;
+    // pin not defined
+    setPowerMode(FT6336_PWR_MODE_ACTIVE); //ts will exit hibernate mode when an i2c command is sent. This doesn't reset the ts properly though
   } 
   else{
     digitalWrite(rstPin, LOW);
     pinMode(rstPin, OUTPUT);
     delay(5); // 1(?)ms for rstPin or between 0.5-1ms for intPin
     pinMode(rstPin, INPUT); // Set to High-Z
-    if(waitForReady){
-      #if defined(ESP8266) || defined(ESP32)
-      esp_sleep_enable_timer_wakeup(300000); // post reset delay
-      esp_light_sleep_start();
-      esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_TIMER);  // otherwise ESP will wakeup after being put to deep sleep
-      #else
-      delay(300); // post reset delay
-      #endif
-    }
-      
   }
+  if(doInit){
+    #if defined(ESP8266) || defined(ESP32)
+    esp_sleep_enable_timer_wakeup(300000); // post reset delay
+    esp_light_sleep_start();
+    esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_TIMER);  // otherwise ESP will wakeup after being put to deep sleep
+    #else
+    delay(300); // post reset delay
+    #endif
+    begin();
+  } 
+
+
 }
 
 /************ lower level i/o **************/

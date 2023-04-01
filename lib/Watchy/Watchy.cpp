@@ -113,8 +113,7 @@ void Watchy::init(String datetime){
         hourlyTimeUpdate = 1;
         ts.setPowerMode(FT6336_PWR_MODE_HIBERNATE); // hibernate (i.e. turn off) touchscreen
         #ifdef DEBUG_POWERSAVER
-        Serial.print("Touch panel put to hibernate (3): ");
-        Serial.println(ts.getPowerMode());
+        Serial.println("Touch panel put to hibernate mode.");
         Serial.print("hourlyTimeUpdate: ");
         Serial.println(hourlyTimeUpdate);
         #endif  //DEBUG_POWERSAVER
@@ -149,8 +148,7 @@ void Watchy::init(String datetime){
           hourlyTimeUpdate = 1;
           ts.setPowerMode(FT6336_PWR_MODE_HIBERNATE); // hibernate (i.e. turn off) touchscreen
           #ifdef DEBUG_POWERSAVER
-          Serial.print("Touch panel put to hibernate (3): ");
-          Serial.println(ts.getPowerMode());
+          Serial.println("Touch panel put to hibernate mode.");
           Serial.print("hourlyTimeUpdate: ");
           Serial.println(hourlyTimeUpdate);
           #endif  //DEBUG_POWERSAVER
@@ -161,7 +159,7 @@ void Watchy::init(String datetime){
           #ifdef DEBUG_POWERSAVER
           Serial.print("Touch panel woken.");
           #endif
-          //ts.wakePanel(false);  // re-enable touch panel after night hours end
+          ts.wakePanel(true); // re-enable touch panel after night hours end
           #ifdef DEBUG_POWERSAVER
           Serial.print("hourlyTimeUpdate: ");
           Serial.println(hourlyTimeUpdate);
@@ -181,14 +179,13 @@ void Watchy::init(String datetime){
         break;
       case ESP_SLEEP_WAKEUP_EXT1: //button Press
           if(hourlyTimeUpdate == 1){
-            // enable touchscreen
-            //ts.wakePanel(false);
+            ts.wakePanel(true); // re-enable touch panel after night hours end
+            // set alarm for 1 minute so that hourlytimeupdate will be re-enabled in 1 minute
             RTC.setAlarm(ALM2_EVERY_MINUTE, 0, 0, 0, 0);  //set alarm for 1 minute, so that touchscreen will be put to sleep at next minute
             hourlyTimeUpdate = 0;
           }
 
           lastButtonInterrupt = millis();
-          //wakeupBit = esp_sleep_get_ext1_wakeup_status(); //has been assigned earlier, before display.init()
           setISRs();
           while(true){
               handleInput();
@@ -391,14 +388,17 @@ int32_t Watchy::_tpWithinMenuBox(){
 /*
  * Shuts down everything and puts the ESP32 to deepsleep:
  *
- * - turns on ext0, ext1 wakeups
- * - turns off ADCs (save power)
+ * - waits for touchscreen interrupt pin to clear
+ * - sets touchscreen to monitor mode
  * - sets display to hibernate
+ * - turns on ext0, ext1 wakeups
+ * - put ESP to deep sleep
  *
  */
 void Watchy::_deepSleep(){ //TODO: set all pins to inputs to save power??
   
   pinMode(TS_INTERRUPT_PIN, INPUT); 
+  //doesn't work properly (I think the ts is somehow set to interrupt mode)
   if (digitalRead(TS_INTERRUPT_PIN) == HIGH){ // sleep and wait for touchscreen interrupt pin to go low again (Otherwise watchy will just wake again immediately)
     #ifdef DEBUG
     Serial.print("waiting for INT pin to go low. ");
@@ -415,26 +415,19 @@ void Watchy::_deepSleep(){ //TODO: set all pins to inputs to save power??
     Serial.println(millis());
     #endif // DEBUG_TIMING
   }
-  // if(ts.getPowerMode() != 3){ // touchscreen isn't hibernating
-  //   #ifdef DEBUG_TOUCHSCREEN
-  //   Serial.println("Setting display to monitor mode.");
-  //   #endif
-  //   ts.setPowerMode(FT6336_PWR_MODE_MONITOR); // set touchscreen to monitor (low power) mode 
-  // }
-
-  // for testing
-  ts.setPowerMode(FT6336_PWR_MODE_HIBERNATE); // set touchscreen to hibernate mode 
-  ts.getPowerMode();
-  delay(3000);
-  Serial.print(ts.getPowerMode());
-
+  if(!hourlyTimeUpdate){ // touchscreen isn't already hibernating
+    #ifdef DEBUG_TOUCHSCREEN
+    Serial.println("Setting touchscreen to monitor mode.");
+    #endif
+    ts.setPowerMode(FT6336_PWR_MODE_MONITOR); // set touchscreen to monitor (low power) mode 
+  }
   #ifdef DEBUG_TIMING
   Serial.println("Hibernate Display: " + String(millis()));
   #endif //DEBUG_TIMING
   display.hibernate();
   esp_sleep_enable_ext0_wakeup(RTC_PIN, 0); //enable deep sleep wake on RTC interrupt
   esp_sleep_enable_ext1_wakeup(BTN_PIN_MASK, ESP_EXT1_WAKEUP_ANY_HIGH); //enable deep sleep wake on button press
-  adc_power_off();
+  //adc_power_off();  //not necessary; no power draw difference
 
   #ifdef DEBUG_TIMING
   Serial.println("Sleep: " + String(millis()));
@@ -654,11 +647,11 @@ void Watchy::checkChargingStatus(){
   bool chargingStatus = digitalRead(CHARGING_SENSE_PIN);
   pinMode(CHARGING_SENSE_PIN, INPUT);
   bool dischargingStatus = digitalRead(CHARGING_SENSE_PIN);
-  chargingFlag = (chargingStatus << 1) | dischargingStatus;
+  chargingFlag = (!chargingStatus << 1) | !dischargingStatus;
   // !charging , discharging
-  // 00 = charging
-  // 10 = AC
-  // 11 = on battery
+  // 11 = charging
+  // 01 = AC
+  // 00 = on battery
   #ifdef DEBUG
   Serial.print("Battery Charging Status: ");
   Serial.println(chargingFlag);
@@ -691,7 +684,7 @@ void IRAM_ATTR ISRStopwatchEnd() {
 void Watchy::_initReset(){
   _rtcConfig();
   bootTime = RTC.get();
-  ts.begin(200);
+  ts.begin();
   //_bmaConfig(); //crashes watchy. B<A starts up in suspend mode so no need to do anything
   showWatchFace(false); //full update on reset
 }
