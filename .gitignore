@@ -5,3 +5,4 @@
 .vscode/ipch
 lib/Watchy/sensitive_config.h
 packages_dir
+platformio.ini

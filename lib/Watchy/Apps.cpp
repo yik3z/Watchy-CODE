@@ -439,7 +439,10 @@ void Watchy::wifiOta(){
     #endif
 	//guiState = APP_STATE;  
     runningApp = wifiOtaState;
-    
+    if(wakeupBit & TS_INT_PIN_MASK){
+        wakeupBit = 0;
+        return;
+    }
     // TODO: handle inputs
     wakeupBit = 0;
     
@@ -492,6 +495,7 @@ void Watchy::wifiOta(){
         
         // TODO: add touch interrupt
 		attachInterrupt(DOWN_BTN_PIN, ISRStopwatchEnd, RISING); //use the same stopwatch interrupt function to stop OTA
+        attachInterrupt(TS_INTERRUPT_PIN, ISRStopwatchEnd, RISING); //use the same stopwatch interrupt function to stop OTA
 
 		display.init(0, false); //re-init after hibernating (waiting for wifi)
 		display.setFullWindow();
