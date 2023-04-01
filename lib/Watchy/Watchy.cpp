@@ -161,7 +161,7 @@ void Watchy::init(String datetime){
           #ifdef DEBUG_POWERSAVER
           Serial.print("Touch panel woken.");
           #endif
-          ts.wakePanel(false);  // re-enable touch panel after night hours end
+          //ts.wakePanel(false);  // re-enable touch panel after night hours end
           #ifdef DEBUG_POWERSAVER
           Serial.print("hourlyTimeUpdate: ");
           Serial.println(hourlyTimeUpdate);
@@ -182,7 +182,7 @@ void Watchy::init(String datetime){
       case ESP_SLEEP_WAKEUP_EXT1: //button Press
           if(hourlyTimeUpdate == 1){
             // enable touchscreen
-            ts.wakePanel(false);
+            //ts.wakePanel(false);
             RTC.setAlarm(ALM2_EVERY_MINUTE, 0, 0, 0, 0);  //set alarm for 1 minute, so that touchscreen will be put to sleep at next minute
             hourlyTimeUpdate = 0;
           }
@@ -424,7 +424,10 @@ void Watchy::_deepSleep(){ //TODO: set all pins to inputs to save power??
 
   // for testing
   ts.setPowerMode(FT6336_PWR_MODE_HIBERNATE); // set touchscreen to hibernate mode 
-  
+  ts.getPowerMode();
+  delay(3000);
+  Serial.print(ts.getPowerMode());
+
   #ifdef DEBUG_TIMING
   Serial.println("Hibernate Display: " + String(millis()));
   #endif //DEBUG_TIMING
