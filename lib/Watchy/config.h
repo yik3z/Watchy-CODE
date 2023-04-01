@@ -98,28 +98,4 @@
 #define BTN_DEBOUNCE_INTERVAL 50 //minimum time between buttonpresses (in ms) for it to be counted
 #define BTN_TIMEOUT 2500        //max time to wait for any uncleared button events before ignoring them and going to sleep
 
-// ID for each app on Watchy. Append apps to this list when installed.
-// Also append apps to _appLauncherHandler function so it can be called.
-enum appID_t { 
-                none_appState = -1,
-                watchFaceState,
-
-                // menus
-                mainMenuState,
-                clockMenuState,
-
-                // apps
-                showStatsState,
-                vibMotorState,
-                calendarState,
-                showAccState,
-                setTimeState,
-                setDarkModeState,
-                setPowerSaverState,
-                showTempState,
-                stopWatchState,
-                connectWiFiState,
-                wifiOtaState 
-                };
-
 #endif

@@ -18,7 +18,7 @@ RTC_DATA_ATTR int internetSyncCounter = 0;
 RTC_DATA_ATTR bool darkMode = 0; //global darkmode
 RTC_DATA_ATTR bool fgColour = GxEPD_BLACK; 
 RTC_DATA_ATTR bool bgColour = GxEPD_WHITE; 
-RTC_DATA_ATTR uint8_t lowBatt = 0;  //0 = normal, 1 = low, 2 = critical
+RTC_DATA_ATTR uint8_t lowBatt_old = 0;  //0 = normal, 1 = low, 2 = critical
 RTC_DATA_ATTR bool powerSaver = 0;  // user-selectable power saver mode
 RTC_DATA_ATTR bool hourlyTimeUpdate = 0;
 volatile uint64_t wakeupBit;
@@ -107,7 +107,7 @@ void Watchy::init(String datetime){
     #endif //DEBUG_TIMING_EXTENSIVE
 
     //critical battery / power saver mode
-    if(lowBatt == 2 or powerSaver == 1){   
+    if(lowBatt_old == 2 or powerSaver == 1){   
       if(!hourlyTimeUpdate){
         RTC.setAlarm(ALM2_MATCH_MINUTES, 0, 0, 0, 0);   //set RTC alarm to hourly (0th minute of the hour)
         hourlyTimeUpdate = 1;
@@ -199,7 +199,7 @@ void Watchy::init(String datetime){
         vibMotor(200, 4);
         break;
     } // switch
-    } // !(lowBatt == 2 or powerSaver == 1)
+    } // !(lowBatt_old == 2 or powerSaver == 1)
     _deepSleep();
 }
 
@@ -633,10 +633,10 @@ uint8_t Watchy::getBatteryPercent(uint32_t vBatt){
         percentage = percentage / 1000; //to get 0-100%
     }
     if(percentage < CRIT_BATT_THRESHOLD){
-        lowBatt = 2;
+        lowBatt_old = 2;
     } else if(percentage < LOW_BATT_THRESHOLD){
-        lowBatt = 1;
-    } else lowBatt = 0;
+        lowBatt_old = 1;
+    } else lowBatt_old = 0;
     return (uint8_t)percentage;
 } 
 
@@ -647,14 +647,10 @@ void Watchy::checkChargingStatus(){
   bool chargingStatus = digitalRead(CHARGING_SENSE_PIN);
   pinMode(CHARGING_SENSE_PIN, INPUT);
   bool dischargingStatus = digitalRead(CHARGING_SENSE_PIN);
-  chargingFlag = (!chargingStatus << 1) | !dischargingStatus;
-  // !charging , discharging
-  // 11 = charging
-  // 01 = AC
-  // 00 = on battery
+  chargingFlag = battStatus_t((!chargingStatus << 1) | !dischargingStatus);
   #ifdef DEBUG
   Serial.print("Battery Charging Status: ");
-  Serial.println(chargingFlag);
+  Serial.println(int(chargingFlag));
   #endif
 }
 
