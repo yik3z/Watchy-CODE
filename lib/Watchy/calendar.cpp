@@ -33,7 +33,7 @@ bool fetchCalendar(){
   #ifdef DEBUG
   Serial.println("Connected to google script");
   #endif
-  http.setTimeout(30000);  //30s
+  http.setTimeout(40000);  //ms, was 30s
   int httpResponseCode = http.GET();
   #ifdef DEBUG
   Serial.print("Response Code: "); Serial.println(httpResponseCode);

@@ -400,20 +400,34 @@ void Watchy::_deepSleep(){ //TODO: set all pins to inputs to save power??
   
   pinMode(TS_INTERRUPT_PIN, INPUT); 
   if (digitalRead(TS_INTERRUPT_PIN) == HIGH){ // sleep and wait for touchscreen interrupt pin to go low again (Otherwise watchy will just wake again immediately)
-    #ifdef DEBUG_TOUCHSCREEN
-    Serial.println("waiting for INT pin to go low");
-    #endif
+    #ifdef DEBUG
+    Serial.print("waiting for INT pin to go low. ");
+    #ifdef DEBUG_TIMING
+    Serial.print(millis());
+    #endif // DEBUG_TIMING
+    Serial.println();
+    #endif // DEBUG
     esp_sleep_enable_ext1_wakeup(TS_INT_PIN_MASK, ESP_EXT1_WAKEUP_ALL_LOW); // wake when INT goes low
     esp_light_sleep_start();
     //sleep//
-    //esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
+    #ifdef DEBUG_TIMING
+    Serial.print("Wakeup: ");
+    Serial.println(millis());
+    #endif // DEBUG_TIMING
   }
+  // if(ts.getPowerMode() != 3){ // touchscreen isn't hibernating
+  //   #ifdef DEBUG_TOUCHSCREEN
+  //   Serial.println("Setting display to monitor mode.");
+  //   #endif
+  //   ts.setPowerMode(FT6336_PWR_MODE_MONITOR); // set touchscreen to monitor (low power) mode 
+  // }
+
+  // for testing
+  ts.setPowerMode(FT6336_PWR_MODE_HIBERNATE); // set touchscreen to hibernate mode 
+  
   #ifdef DEBUG_TIMING
   Serial.println("Hibernate Display: " + String(millis()));
   #endif //DEBUG_TIMING
-  if(ts.getPowerMode() != 3){ // touchscreen isn't hibernating
-    ts.setPowerMode(FT6336_PWR_MODE_MONITOR); // set touchscreen to monitor (low power) mode 
-  }
   display.hibernate();
   esp_sleep_enable_ext0_wakeup(RTC_PIN, 0); //enable deep sleep wake on RTC interrupt
   esp_sleep_enable_ext1_wakeup(BTN_PIN_MASK, ESP_EXT1_WAKEUP_ANY_HIGH); //enable deep sleep wake on button press
@@ -643,7 +657,7 @@ void Watchy::checkChargingStatus(){
   // 10 = AC
   // 11 = on battery
   #ifdef DEBUG
-  Serial.println("Battery Charging Status: ");
+  Serial.print("Battery Charging Status: ");
   Serial.println(chargingFlag);
   #endif
 }

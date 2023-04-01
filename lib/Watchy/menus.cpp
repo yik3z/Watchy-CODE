@@ -116,14 +116,13 @@ void Watchy::_menuInteractionHandler(){
       return;
     }
     // tap to change page
-    if(_tpWithinBounds(67-10,67+pageArrowBoxLength+10,170-10,170+pageArrowBoxLength+10)){ //added extra space around buttons
+    if(_tpWithinBounds(67-30,67+pageArrowBoxLength+10,170-10,170+pageArrowBoxLength+10)){ //added extra space around buttons. Note, 30px was added to the left bc the touchscreen just doesn't register the area properly
       menuPageNumber--;
       #ifdef DEBUG_TOUCHSCREEN
       Serial.print("Menu page-- (touch): ");
       Serial.println(menuPageNumber);
       #endif
     } else if(_tpWithinBounds(112-10,112+pageArrowBoxLength+10,170-10,170+pageArrowBoxLength+10)){  // prev page
-
       menuPageNumber++;
       #ifdef DEBUG_TOUCHSCREEN
       Serial.print("Menu page++ (touch): ");

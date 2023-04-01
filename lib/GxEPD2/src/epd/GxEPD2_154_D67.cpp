@@ -400,7 +400,7 @@ void GxEPD2_154_D67::_Update_Full()
   #endif //DEBUG_TIMING
   _startTransfer();
   _transferCommand(0x22);
-  _transfer(0xf7); //was 0xf4, supposed to be 0xf7??
+  _transfer(0xf4); //was 0xf4, official is 0xf7??
   _transferCommand(0x20);
   _endTransfer();
   _waitWhileBusy("_Update_Full", full_refresh_time);
@@ -416,7 +416,7 @@ void GxEPD2_154_D67::_Update_Part()
   #endif //DEBUG_TIMING
   _startTransfer();
   _transferCommand(0x22);
-  _transfer(0xff);   //was 0xfc, supposd to be 0xff??
+  _transfer(0xfc);   //was 0xfc, official is 0xff??
   _transferCommand(0x20);
   _endTransfer();
   _waitWhileBusy("_Update_Part", partial_refresh_time);  
