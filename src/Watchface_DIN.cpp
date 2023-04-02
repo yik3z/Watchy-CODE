@@ -31,9 +31,7 @@ void Watchface_DIN::drawWatchFace(){
     //drawTemperature();
     drawBatteryBar();
     //drawBleWiFi();
-    if(lowBatt_old != 0){
-      drawLowBatt();
-    }
+    drawLowBatt();
 }
 
 void Watchface_DIN::drawTime(){
@@ -181,21 +179,25 @@ void Watchface_DIN::drawBleWiFi(){
 */
 
 void Watchface_DIN::drawLowBatt(){
-        display.setFont(&FreeMonoBold9pt7b);
-    if(lowBatt_old == 1){
-        display.drawBitmap(3, 8, lowBattIcon, 16, 9, fgColour);
-    }
-    else if (lowBatt_old == 2){
-        display.drawBitmap(1, 0, noBattIcon, 19, 15, fgColour);
-    }
-    else if (chargingFlag == chargingBatt){
-      display.fillRect(0,0,24+5,18+5, fgColour);
-      display.drawBitmap(3, 3, battChargingIcon, 24, 18, fgColour);
-    }
-    else if (chargingFlag == acPower){
-      display.fillRect(0,0,16,16, fgColour);
-      display.drawBitmap(2, 2, pluggedInIcon, 12, 12, fgColour);
-    }
+  // TODO: enable below once lowBatt is unified into chargingFlag
+  // if(chargingFlag == normalBatt) return; // no special battery icons to draw
+
+  display.setFont(&FreeMonoBold9pt7b);
+  if(lowBatt_old == 1){
+      display.drawBitmap(3, 8, lowBattIcon, 16, 9, fgColour);
+  }
+  else if (lowBatt_old == 2){
+      display.drawBitmap(1, 0, noBattIcon, 19, 15, fgColour);
+  }
+  else if (chargingFlag == chargingBatt){
+    display.fillRect(0,0,29,18, bgColour);
+    display.drawBitmap(3, 0, battChargingIcon, 24, 18, fgColour);
+  }
+  else if (chargingFlag == acPower){
+
+    display.fillRect(0,0,16,14, bgColour);
+    display.drawBitmap(2, 1, pluggedInIcon, 12, 1, fgColour);
+  }
 }
 
 /* function disabled till I figure out what's the issue with the wrong temp

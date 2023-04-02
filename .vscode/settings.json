@@ -22,6 +22,11 @@
         "valarray": "cpp",
         "bitset": "cpp",
         "random": "cpp",
-        "future": "cpp"
+        "future": "cpp",
+        "chrono": "cpp",
+        "condition_variable": "cpp",
+        "ctime": "cpp",
+        "mutex": "cpp",
+        "thread": "cpp"
     }
 }
