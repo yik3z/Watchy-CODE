@@ -31,7 +31,7 @@ void Watchface_DIN::drawWatchFace(){
     //drawTemperature();
     drawBatteryBar();
     //drawBleWiFi();
-    if(lowBatt != 0){
+    if(lowBatt_old != 0){
       drawLowBatt();
     }
 }
@@ -182,11 +182,19 @@ void Watchface_DIN::drawBleWiFi(){
 
 void Watchface_DIN::drawLowBatt(){
         display.setFont(&FreeMonoBold9pt7b);
-    if(lowBatt == 1){
+    if(lowBatt_old == 1){
         display.drawBitmap(3, 8, lowBattIcon, 16, 9, fgColour);
     }
-    else if (lowBatt == 2){
+    else if (lowBatt_old == 2){
         display.drawBitmap(1, 0, noBattIcon, 19, 15, fgColour);
+    }
+    else if (chargingFlag == chargingBatt){
+      display.fillRect(0,0,24+5,18+5, fgColour);
+      display.drawBitmap(3, 3, battChargingIcon, 24, 18, fgColour);
+    }
+    else if (chargingFlag == acPower){
+      display.fillRect(0,0,16,16, fgColour);
+      display.drawBitmap(2, 2, pluggedInIcon, 12, 12, fgColour);
     }
 }
 

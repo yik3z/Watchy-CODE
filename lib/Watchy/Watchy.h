@@ -26,17 +26,11 @@
 #include "bma.h"
 #endif //USING_ACCELEROMETER
 #include "calendar.h" //not ready
+#include "custom_data_types.h"
 //#include "Apps.h"     //not ready
 //#include "Weather.h"  //not ready
 
-#ifdef INCLUDE_WEATHER
-#include "Weather.h"
 
-typedef struct weatherData{
-    int8_t temperature;
-    int16_t weatherConditionCode;
-}weatherData;
-#endif
 
 class Watchy {
     public:
@@ -46,7 +40,7 @@ class Watchy {
         tmElements_t currentTime;
         esp_adc_cal_characteristics_t adc_chars;
         esp_sleep_wakeup_cause_t wakeup_reason;
-        int chargingFlag;
+        battStatus_t chargingFlag;
 
     public:
         Watchy();
@@ -138,13 +132,12 @@ extern RTC_DATA_ATTR bool BLE_CONFIGURED;
 extern RTC_DATA_ATTR bool darkMode;    
 extern RTC_DATA_ATTR bool fgColour; 
 extern RTC_DATA_ATTR bool bgColour;
-extern RTC_DATA_ATTR uint8_t lowBatt;  
+extern RTC_DATA_ATTR uint8_t lowBatt_old;  
 extern RTC_DATA_ATTR bool lastNtpSyncSuccess;
 extern RTC_DATA_ATTR bool lastCalendarSyncSuccess;
 
 #ifdef USING_ACCELEROMETER
 extern RTC_DATA_ATTR BMA423 sensor;
 #endif //USING_ACCELEROMETER
-
 
 #endif
