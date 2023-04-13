@@ -54,7 +54,7 @@
 //wifi
 #define WIFI_TIMEOUT 10000 //ms
 //WIFI_SSID and WIFI_PASSWORD defined in sensitive_config.h
-#define INTERNET_SYNC_INTERVAL 3 //days, syncs NTP time and calendar
+#define INTERNET_SYNC_INTERVAL 10 //days, syncs NTP time and calendar
 
 //menu
 #define WATCHFACE_STATE -1
@@ -73,8 +73,8 @@
 #define SET_MONTH 3
 #define SET_DAY 4
 #define YEAR_OFFSET 1970
-#define GMT_OFFSET_SEC 28800    //s, set time zone to singapore standard time
-                                // ie UTC 8 * 60 * 60 = 28800
+#define GMT_OFFSET_SEC -25200    //s, set time zone to PDT (UTC -7)
+                                // eg UTC +8 = 8 * 60 * 60 = 28800
 #define DAYLIGHT_OFFSET_SEC 0   // if observing Daylight saving time 3600 otherwise 0.
 #define NTP_SERVER "pool.ntp.org"
 
