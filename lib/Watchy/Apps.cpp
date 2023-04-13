@@ -652,9 +652,11 @@ void Watchy::setTime(){
 			}
     }
     if(digitalRead(BACK_BTN_PIN) == 1){
-			if(setIndex != SET_HOUR){
-			setIndex--;
-			}
+			// if(setIndex != SET_HOUR){
+			// setIndex--;
+			// }
+        runningApp = mainMenuState;
+        return;
     }      
 
     blink = 1 - blink;
