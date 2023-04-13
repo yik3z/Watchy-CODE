@@ -170,7 +170,19 @@ void Watchy::init(String datetime){
         if(runningApp == watchFaceState){
           if((currentTime.Hour == 3) && (currentTime.Minute == 0)){ //full refresh + internet sync late at night
             internetSyncCounter++;
-            if (internetSyncCounter>INTERNET_SYNC_INTERVAL){
+            bool chargingSyncNTP = false;
+            if(chargingFlag == acPower || chargingBatt){
+              tmElements_t lastNtpSync_elements;
+              breakTime(lastNtpSync, lastNtpSync_elements);
+              if(currentTime.Hour-2 > lastNtpSync_elements.Hour){
+                // chargingSyncNTP = true;
+                #ifdef DEBUG
+                Serial.println("time to sync NTP!");
+                #endif
+              }
+            }
+
+            if (internetSyncCounter>INTERNET_SYNC_INTERVAL || chargingSyncNTP){
               syncInternetStuff();
             }
             showWatchFace(false);
@@ -643,11 +655,22 @@ uint8_t Watchy::getBatteryPercent(uint32_t vBatt){
 // Reads the charging sense pin to determine if battery is currently charging
 // Not sure what "not charging but AC present" outputs
 void Watchy::checkChargingStatus(){
-  pinMode(CHARGING_SENSE_PIN, INPUT_PULLUP);
-  bool chargingStatus = digitalRead(CHARGING_SENSE_PIN);
+  adc_power_acquire();
   pinMode(CHARGING_SENSE_PIN, INPUT);
-  bool dischargingStatus = digitalRead(CHARGING_SENSE_PIN);
-  chargingFlag = battStatus_t((!chargingStatus << 1) | !dischargingStatus);
+  tp4054Voltage = analogRead(CHARGING_SENSE_PIN);
+  // 0 -> charging
+  // ~11-14 -> discharging
+  adc_power_release();
+  if(tp4054Voltage < 9) chargingFlag = chargingBatt;    // nominally 0
+  else if(tp4054Voltage > 4000) chargingFlag = acPower; // nominally 4095
+  else chargingFlag = normalBatt;                       // nominally between 11-16
+
+  // doesn't work:
+  // pinMode(CHARGING_SENSE_PIN, INPUT_PULLUP);
+  // bool chargingStatus = !(digitalRead(CHARGING_SENSE_PIN)); // pin is pulled low when charging
+  // pinMode(CHARGING_SENSE_PIN, INPUT);
+  // bool dischargingStatus = !digitalRead(CHARGING_SENSE_PIN);  //may not work to detect AC present, since there's still the LED connected as an input pullup
+  // chargingFlag = battStatus_t((chargingStatus << 1) | dischargingStatus);
   #ifdef DEBUG
   Serial.print("Battery Charging Status: ");
   Serial.println(int(chargingFlag));

@@ -41,6 +41,7 @@ class Watchy {
         esp_adc_cal_characteristics_t adc_chars;
         esp_sleep_wakeup_cause_t wakeup_reason;
         battStatus_t chargingFlag;
+        uint32_t tp4054Voltage;
 
     public:
         Watchy();

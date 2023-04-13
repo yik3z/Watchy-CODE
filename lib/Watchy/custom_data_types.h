@@ -15,9 +15,9 @@ typedef struct weatherData{
 #endif
 
 enum battStatus_t   { 
-                    normalBatt = 0b00,      // running on battery
-                    acPower = 0b01,         // plugged in but 100% charged
-                    chargingBatt = 0b11,
+                    normalBatt = 0,      // running on battery
+                    acPower = 1,         // plugged in but 100% charged
+                    chargingBatt = 2,
 
                     lowBatt,
                     criticalBatt
