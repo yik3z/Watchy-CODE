@@ -18,7 +18,7 @@ RTC_DATA_ATTR int internetSyncCounter = 0;
 RTC_DATA_ATTR bool darkMode = 0; //global darkmode
 RTC_DATA_ATTR bool fgColour = GxEPD_BLACK; 
 RTC_DATA_ATTR bool bgColour = GxEPD_WHITE; 
-RTC_DATA_ATTR uint8_t lowBatt_old = 0;  //0 = normal, 1 = low, 2 = critical
+RTC_DATA_ATTR uint8_t lowBatt_old = 0;  // to be merged with chargingFlag. 0 = normal, 1 = low, 2 = critical
 RTC_DATA_ATTR bool powerSaver = 0;  // user-selectable power saver mode
 RTC_DATA_ATTR bool hourlyTimeUpdate = 0;
 volatile uint64_t wakeupBit;
@@ -100,7 +100,9 @@ void Watchy::init(String datetime){
       #endif
     }
     display.init(0, false); //_initial_refresh to false to prevent full update on init
-    checkChargingStatus();
+    battPercent = getBatteryPercent(getBatteryVoltage());
+    chargingFlag = checkChargingStatus();
+
 
     #ifdef DEBUG_TIMING_EXTENSIVE
     Serial.println("display init'd: " + String(millis()));
@@ -171,8 +173,8 @@ void Watchy::init(String datetime){
           if((currentTime.Hour == 3) && (currentTime.Minute == 0)){ //full refresh + internet sync late at night
             internetSyncCounter++;
             bool chargingSyncNTP = false;
-            if(chargingFlag == acPower || chargingBatt){
-              tmElements_t lastNtpSync_elements;
+            if(chargingFlag == acPower || chargingBatt){  // sync NTP if charging
+              tmElements_t lastNtpSync_elements;          // get convert last NTP sync time to check if it's been a while alr
               breakTime(lastNtpSync, lastNtpSync_elements);
               if(currentTime.Hour-2 > lastNtpSync_elements.Hour){
                 // chargingSyncNTP = true;
@@ -183,7 +185,7 @@ void Watchy::init(String datetime){
             }
 
             if (internetSyncCounter>INTERNET_SYNC_INTERVAL || chargingSyncNTP){
-              syncInternetStuff();
+              //syncInternetStuff();  //disiabled auto sync because watchy crashes on sync
             }
             showWatchFace(false);
           } else showWatchFace(true); //partial updates on tick
@@ -654,16 +656,17 @@ uint8_t Watchy::getBatteryPercent(uint32_t vBatt){
 
 // Reads the charging sense pin to determine if battery is currently charging
 // Not sure what "not charging but AC present" outputs
-void Watchy::checkChargingStatus(){
+battStatus_t Watchy::checkChargingStatus(){
+  battStatus_t _chargingFlag;
   adc_power_acquire();
   pinMode(CHARGING_SENSE_PIN, INPUT);
   tp4054Voltage = analogRead(CHARGING_SENSE_PIN);
-  // 0 -> charging
-  // ~11-14 -> discharging
+  // 0 - ~4 -> charging
+  // ~4 - 4094(?) -> discharging
   adc_power_release();
-  if(tp4054Voltage < 9) chargingFlag = chargingBatt;    // nominally 0
-  else if(tp4054Voltage > 4000) chargingFlag = acPower; // nominally 4095
-  else chargingFlag = normalBatt;                       // nominally between 11-16
+  if(tp4054Voltage < 9) _chargingFlag = chargingBatt;    // nominally 0
+  else if(tp4054Voltage > 4000) _chargingFlag = acPower; // nominally 4095
+  else _chargingFlag = normalBatt;                       // nominally between 11-16
 
   // doesn't work:
   // pinMode(CHARGING_SENSE_PIN, INPUT_PULLUP);
@@ -672,9 +675,12 @@ void Watchy::checkChargingStatus(){
   // bool dischargingStatus = !digitalRead(CHARGING_SENSE_PIN);  //may not work to detect AC present, since there's still the LED connected as an input pullup
   // chargingFlag = battStatus_t((chargingStatus << 1) | dischargingStatus);
   #ifdef DEBUG
-  Serial.print("Battery Charging Status: ");
-  Serial.println(int(chargingFlag));
+  Serial.print("Battery Charging Flag: ");
+  //Serial.print(tp4054Voltage);
+  //Serial.print("| Status: ");
+  Serial.println(int(_chargingFlag));
   #endif
+  return _chargingFlag;
 }
 
 #ifdef DEBUG

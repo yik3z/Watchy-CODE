@@ -151,19 +151,10 @@ void Watchface_DIN::drawNextCalendarEvent(){
 void Watchface_DIN::drawBatteryBar(){
     //battery bar
     display.fillRect(0, 0, DISPLAY_WIDTH, BATTERY_BAR_HEIGHT, bgColour); //clear battery bar; IS THIS EVEN REQUIRED?
-    uint32_t vBatt = getBatteryVoltage();
-    //https://github.com/G6EJD/LiPo_Battery_Capacity_Estimator/blob/master/ReadBatteryCapacity_LIPO.ino as linked by Huey's github
-    uint8_t percentage = getBatteryPercent(vBatt);
-    /*  //removed in favour of LUT
-    if (vBatt >= 4200) percentage = 100;
-    else if (vBatt <= 3500) percentage = 0;
-    else {
-        float VBAT = vBatt / 1000.0;    //TODO try to get rid of the floating point calculation
-                                        //maybe use a LUT
-        percentage = 2808.3808 * pow(VBAT, 4) - 43560.9157 * pow(VBAT, 3) + 252848.5888 * pow(VBAT, 2) - 650767.4615 * VBAT + 626532.5703;
-    }
-    */
-    uint8_t batteryBarWidth = percentage * 2; // beacuse it's 200px wide lol
+    // uint32_t vBatt = getBatteryVoltage();
+    // uint8_t percentage = getBatteryPercent(vBatt);
+
+    uint8_t batteryBarWidth = battPercent * 2; // beacuse it's 200px wide lol
     
     display.fillRect(0, 0, batteryBarWidth, BATTERY_BAR_HEIGHT, fgColour);
 }
@@ -198,6 +189,8 @@ void Watchface_DIN::drawLowBatt(){
     display.fillRect(0,0,16,14, bgColour);
     display.drawBitmap(2, 1, pluggedInIcon, 12, 1, fgColour);
   }
+  // display.setCursor(3,25);
+  // display.println(tp4054Voltage);
 }
 
 /* function disabled till I figure out what's the issue with the wrong temp

@@ -41,7 +41,8 @@ class Watchy {
         esp_adc_cal_characteristics_t adc_chars;
         esp_sleep_wakeup_cause_t wakeup_reason;
         battStatus_t chargingFlag;
-        uint32_t tp4054Voltage;
+        uint8_t battPercent;
+        uint32_t tp4054Voltage; // to be removed
 
     public:
         Watchy();
@@ -56,7 +57,7 @@ class Watchy {
         bool initWiFi();
         void syncNtpTime();
         String syncInternetStuff();
-        void checkChargingStatus();
+        battStatus_t checkChargingStatus();
         
         virtual void drawWatchFace(); //override this method for different watch faces
         void showWatchFace(bool partialRefresh = true);
