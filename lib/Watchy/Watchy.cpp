@@ -668,16 +668,10 @@ battStatus_t Watchy::checkChargingStatus(){
   else if(tp4054Voltage > 4000) _chargingFlag = acPower; // nominally 4095
   else _chargingFlag = normalBatt;                       // nominally between 11-16
 
-  // doesn't work:
-  // pinMode(CHARGING_SENSE_PIN, INPUT_PULLUP);
-  // bool chargingStatus = !(digitalRead(CHARGING_SENSE_PIN)); // pin is pulled low when charging
-  // pinMode(CHARGING_SENSE_PIN, INPUT);
-  // bool dischargingStatus = !digitalRead(CHARGING_SENSE_PIN);  //may not work to detect AC present, since there's still the LED connected as an input pullup
-  // chargingFlag = battStatus_t((chargingStatus << 1) | dischargingStatus);
   #ifdef DEBUG
   Serial.print("Battery Charging Flag: ");
-  //Serial.print(tp4054Voltage);
-  //Serial.print("| Status: ");
+  Serial.print(tp4054Voltage);
+  Serial.print("| Status: ");
   Serial.println(int(_chargingFlag));
   #endif
   return _chargingFlag;
