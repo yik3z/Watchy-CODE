@@ -89,13 +89,13 @@ void Watchy::init(String datetime){
     //critical battery / power saver mode
     if(lowBatt == 2 or powerSaver == 1){   
         if(!hourlyTimeUpdate){
-            RTC.setAlarm(ALM2_MATCH_MINUTES, 0, 0, 0, 0);   //set RTC alarm to hourly (0th minute of the hour)
+            RTC.setAlarm(DS3232RTC::ALM2_MATCH_MINUTES, 0, 0, 0, 0);   //set RTC alarm to hourly (0th minute of the hour)
             hourlyTimeUpdate = 1;
         }
         switch (wakeup_reason)
         {
         case ESP_SLEEP_WAKEUP_EXT0: //RTC Alarm
-            RTC.alarm(ALARM_2); //resets the alarm flag in the RTC
+            RTC.alarm(DS3232RTC::ALARM_2); //resets the alarm flag in the RTC
             if(guiState == WATCHFACE_STATE){
                 RTC.read(currentTime);
                 showWatchFace(true); //partial updates on tick
@@ -118,7 +118,7 @@ void Watchy::init(String datetime){
     switch (wakeup_reason)
     {
         case ESP_SLEEP_WAKEUP_EXT0: //RTC Alarm
-            RTC.alarm(ALARM_2); //resets the alarm flag in the RTC
+            RTC.alarm(DS3232RTC::ALARM_2); //resets the alarm flag in the RTC
             if(guiState == WATCHFACE_STATE){
                 RTC.read(currentTime);
                 if((currentTime.Hour == 3) && (currentTime.Minute == 0)){ //full refresh + internet sync late at night
@@ -131,7 +131,7 @@ void Watchy::init(String datetime){
             }
             #ifdef NIGHT_HOURLY_TIME_UPDATE
             if((hourlyTimeUpdate == 0) && (currentTime.Hour >= NIGHT_HOURS_START) && (currentTime.Hour < NIGHT_HOURS_END)){  //set to update every hour from NIGHT_HOURS_START onwards //
-                RTC.setAlarm(ALM2_MATCH_MINUTES, 0, 0, 0, 0);   //set RTC alarm to hourly (0th minute of the hour)
+                RTC.setAlarm(DS3232RTC::ALM2_MATCH_MINUTES, 0, 0, 0, 0);   //set RTC alarm to hourly (0th minute of the hour)
                 hourlyTimeUpdate = 1;
                 #ifdef DEBUG_POWERSAVER
                 Serial.print("hourlyTimeUpdate: ");
@@ -141,7 +141,7 @@ void Watchy::init(String datetime){
             }
             else if((hourlyTimeUpdate == 1) && (currentTime.Hour >= NIGHT_HOURS_END)){  //set to update every minute from 7:00am onwards 
           //else if(currentTime.Hour == 7 && currentTime.Minute == 0){ 
-                RTC.setAlarm(ALM2_EVERY_MINUTE, 0, 0, 0, 0);  //set alarm back to 
+                RTC.setAlarm(DS3232RTC::ALM2_EVERY_MINUTE, 0, 0, 0, 0);  //set alarm back to 
                 hourlyTimeUpdate = 0; 
                 #ifdef DEBUG_POWERSAVER
                 Serial.print("hourlyTimeUpdate: ");
@@ -283,7 +283,7 @@ void Watchy::handleButtonPress(){
     #endif
     wakeupBit = 0;
     if(guiState == MAIN_MENU_STATE){//exit to watch face if already in menu
-      RTC.alarm(ALARM_2); //resets the alarm flag in the RTC
+      RTC.alarm(DS3232RTC::ALARM_2); //resets the alarm flag in the RTC
       RTC.read(currentTime);
       showWatchFace(false);
     }else if(guiState == APP_STATE){
@@ -493,9 +493,9 @@ void Watchy::_rtcConfig(String datetime){
 
   }
   //https://github.com/JChristensen/DS3232RTC
-  RTC.squareWave(SQWAVE_NONE); //disable square wave output
-  RTC.setAlarm(ALM2_EVERY_MINUTE, 0, 0, 0, 0); //alarm wakes up Watchy every minute
-  RTC.alarmInterrupt(ALARM_2, true); //enable alarm interrupt
+  RTC.squareWave(DS3232RTC::SQWAVE_NONE); //disable square wave output
+  RTC.setAlarm(DS3232RTC::ALM2_EVERY_MINUTE, 0, 0, 0, 0); //alarm wakes up Watchy every minute
+  RTC.alarmInterrupt(DS3232RTC::ALARM_2, true); //enable alarm interrupt
   RTC.read(currentTime);
 }
  
@@ -648,11 +648,11 @@ uint32_t Watchy::getBatteryVoltage(){
     // setup
 
     adc1_config_width(ADC_WIDTH_BIT_12);
-    adc1_config_channel_atten(ADC1_GPIO33_CHANNEL, ADC_ATTEN_DB_11);
+    adc1_config_channel_atten(ADC1_CHANNEL_5, ADC_ATTEN_DB_11);
     esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
     
 // read voltage
-    int analog = adc1_get_raw(ADC1_GPIO33_CHANNEL);
+    int analog = adc1_get_raw(ADC1_CHANNEL_5);
     return esp_adc_cal_raw_to_voltage(analog, &adc_chars) * 2;
     //return analogRead(ADC_PIN) / 4096.0 * 7.23;
 }
