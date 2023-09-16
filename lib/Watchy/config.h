@@ -7,7 +7,7 @@
   //#define DEBUG_CALENDAR    //enable printing of calendar debug messages
   #define DEBUG_TIMING        //enable printing of timinings (millis())
   #ifdef DEBUG_TIMING
-    //#define DEBUG_TIMING_EXTENSIVE        //enable printing of timinings (millis())
+    //#define DEBUG_TIMING_EXTENSIVE        //enable printing of timings (millis())
     
   #endif
   #define DEBUG_POWERSAVER  //enable printing of power saver - related messages

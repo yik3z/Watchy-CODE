@@ -101,8 +101,8 @@ void Watchy::init(String datetime){
     }
     display.init(0, false); //_initial_refresh to false to prevent full update on init
     battPercent = getBatteryPercent(getBatteryVoltage());
-    chargingFlag = checkChargingStatus();
-
+    //chargingFlag = checkChargingStatus();
+    chargingFlag = normalBatt;
 
     #ifdef DEBUG_TIMING_EXTENSIVE
     Serial.println("display init'd: " + String(millis()));
